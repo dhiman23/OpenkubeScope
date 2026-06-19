@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package kubescope.scanner.v1;
+
+// Source of truth for these shapes today: lib/rbac-scanner.ts (types + generateFindings)
+// and lib/scan-storage.ts (persistence). rbac-scanner-service owns the `scans` schema;
+// other services must go through this gRPC API instead of querying that table directly.
+
+// ============================================
+// CORE RBAC TYPES (mirrors lib/rbac-scanner.ts)
+// ============================================
+
+enum SubjectKind {
+  SUBJECT_KIND_UNSPECIFIED = 0;
+  USER = 1;
+  GROUP = 2;
+  SERVICE_ACCOUNT = 3;
+}
+
+enum RoleKind {
+  ROLE_KIND_UNSPECIFIED = 0;
+  ROLE = 1;
+  CLUSTER_ROLE = 2;
+}
+
+enum BindingKind {
+  BINDING_KIND_UNSPECIFIED = 0;
+  ROLE_BINDING = 1;
+  CLUSTER_ROLE_BINDING = 2;
+}
+
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  LOW = 1;
+  MEDIUM = 2;
+  HIGH = 3;
+  CRITICAL = 4;
+}
+
+enum FindingCategory {
+  FINDING_CATEGORY_UNSPECIFIED = 0;
+  OVERLY_PERMISSIVE = 1;
+  PRIVILEGE_ESCALATION = 2;
+  MISCONFIGURATION = 3;
+  BEST_PRACTICE = 4;
+}
+
+message RBACSubject {
+  string name = 1;
+  SubjectKind kind = 2;
+  optional string namespace = 3;
+}
+
+message RBACRule {
+  repeated string api_groups = 1;
+  repeated string resources = 2;
+  repeated string verbs = 3;
+  repeated string resource_names = 4;
+}
+
+message RBACRole {
+  string name = 1;
+  RoleKind kind = 2;
+  optional string namespace = 3;
+  repeated RBACRule rules = 4;
+}
+
+message RoleRef {
+  string kind = 1;
+  string name = 2;
+}
+
+message BindingSubject {
+  string kind = 1;
+  string name = 2;
+  optional string namespace = 3;
+}
+
+message RBACBinding {
+  string name = 1;
+  BindingKind kind = 2;
+  optional string namespace = 3;
+  RoleRef role_ref = 4;
+  repeated BindingSubject subjects = 5;
+}
+
+message Evidence {
+  repeated string api_groups = 1;
+  repeated string resources = 2;
+  repeated string verbs = 3;
+}
+
+message RBACFinding {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  Severity severity = 4;
+  FindingCategory category = 5;
+  string subject = 6;
+  string subject_type = 7;
+  string role = 8;
+  string namespace = 9;
+  string remediation = 10;
+  string discovered_at = 11; // ISO 8601
+  repeated string affected_resources = 12;
+  repeated string impacted_subjects = 13;
+  Evidence evidence = 14;
+}
+
+message ScanDataset {
+  repeated RBACSubject subjects = 1;
+  repeated RBACRole roles = 2;          // Combined Role + ClusterRole
+  repeated RBACBinding bindings = 3;    // Combined RoleBinding + ClusterRoleBinding
+  repeated RBACFinding findings = 4;
+  // Optional detailed views, kept separate (mirrors ScanDataset in rbac-scanner.ts)
+  repeated RBACRole cluster_roles = 5;
+  repeated RBACBinding role_bindings = 6;
+  repeated RBACBinding cluster_role_bindings = 7;
+}
+
+message ScanTotals {
+  int32 subjects = 1;
+  int32 roles = 2;
+  int32 bindings = 3;
+}
+
+message ScanRiskCounts {
+  int32 critical = 1;
+  int32 high = 2;
+  int32 medium = 3;
+  int32 low = 4;
+}
+
+message Scan {
+  string id = 1;
+  string file_name = 2;
+  string created_at = 3; // ISO 8601
+  string cluster_name = 4;
+  ScanTotals totals = 5;
+  ScanRiskCounts risk_counts = 6;
+  ScanDataset dataset = 7;
+  bool is_summary_mode = 8;
+  string workspace_id = 9;
+}
+
+// ============================================
+// RPCs
+// ============================================
+
+// Parses + persists a snapshot file (.json or .zip), runs the 12-rule findings
+// engine, and returns the resulting Scan. Equivalent to createScanFromFile()
+// + saveScans() today.
+message ScanSnapshotRequest {
+  string workspace_id = 1;
+  string file_name = 2;
+  bytes file_content = 3;
+  int64 file_size = 4;
+}
+
+message ScanSnapshotResponse {
+  Scan scan = 1;
+}
+
+message GetScanRequest {
+  string workspace_id = 1;
+  string scan_id = 2;
+}
+
+message GetScanResponse {
+  Scan scan = 1;
+}
+
+// Used by report-service to fetch the latest scan per cluster without
+// reaching into rbac-scanner-service's schema directly.
+message ListScansByClusterRequest {
+  string workspace_id = 1;
+  repeated string cluster_names = 2;
+  // If true, omit dataset.subjects/roles/bindings and return only
+  // totals/risk_counts/findings (mirrors loadScansMeta()).
+  bool meta_only = 3;
+}
+
+message ListScansByClusterResponse {
+  repeated Scan scans = 1;
+}
+
+message DeleteScanRequest {
+  string workspace_id = 1;
+  string scan_id = 2;
+}
+
+message DeleteScanResponse {
+  bool deleted = 1;
+}
+
+service RbacScannerService {
+  rpc ScanSnapshot(ScanSnapshotRequest) returns (ScanSnapshotResponse);
+  rpc GetScan(GetScanRequest) returns (GetScanResponse);
+  rpc ListScansByCluster(ListScansByClusterRequest) returns (ListScansByClusterResponse);
+  rpc DeleteScan(DeleteScanRequest) returns (DeleteScanResponse);
+}
