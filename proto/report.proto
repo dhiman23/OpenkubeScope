@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+package kubescope.report.v1;
+
+import "scanner.proto";
+
+// Source of truth for these shapes today: lib/report-generator.ts and
+// lib/report-storage.ts. report-service owns the `reports` /
+// `scheduled_reports` schema. It does NOT read the `scans` table directly —
+// it calls RbacScannerService.ListScansByCluster (see scanner.proto) to get
+// scan data, since rbac-scanner-service owns that schema.
+//
+// Trigger mechanism (core-api -> report-service) for Phase 2: this draft
+// models a direct synchronous gRPC call (GenerateReport), matching today's
+// inline generateReport() behavior. Confirm before Phase 2 whether async
+// (Redis pub/sub, report-service polls/subscribes) replaces this for
+// scheduled/long-running reports.
+
+enum ReportType {
+  REPORT_TYPE_UNSPECIFIED = 0;
+  COMPLIANCE = 1;
+  RISK_ASSESSMENT = 2;
+  RBAC_AUDIT = 3;
+  TREND_ANALYSIS = 4;
+}
+
+enum ReportFormat {
+  REPORT_FORMAT_UNSPECIFIED = 0;
+  JSON = 1;
+  CSV = 2;
+  PDF = 3;
+}
+
+enum ReportStatus {
+  REPORT_STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  COMPLETED = 2;
+  FAILED = 3;
+}
+
+// ============================================
+// REPORT DATA SECTIONS (mirrors report-generator.ts)
+// ============================================
+
+message FlatRBACRow {
+  string cluster = 1;
+  string subject = 2;
+  string type = 3;
+  string namespace = 4;
+  string role = 5;
+  string resource = 6;
+  string verbs = 7;
+  string risk = 8;
+  string issue = 9;
+  string recommendation = 10;
+}
+
+message ClusterMetadata {
+  string name = 1;
+  string scan_date = 2; // ISO 8601
+  int32 subjects = 3;
+  int32 roles = 4;
+  int32 bindings = 5;
+}
+
+message RbacSummary {
+  int32 total_subjects = 1;
+  int32 total_roles = 2;
+  int32 total_bindings = 3;
+}
+
+message ComplianceSection {
+  repeated ClusterMetadata cluster_metadata = 1;
+  RbacSummary rbac_summary = 2;
+  repeated kubescope.scanner.v1.RBACFinding top_findings = 3;
+  repeated string recommendations = 4;
+}
+
+message AffectedSubject {
+  string name = 1;
+  string type = 2;
+  int32 finding_count = 3;
+  string highest_severity = 4;
+}
+
+message FindingList {
+  repeated kubescope.scanner.v1.RBACFinding findings = 1;
+}
+
+message RiskAssessmentSection {
+  kubescope.scanner.v1.ScanRiskCounts severity_distribution = 1;
+  repeated AffectedSubject affected_subjects = 2;
+  map<string, FindingList> findings_by_category = 3;
+}
+
+message ScanComparisonPoint {
+  string cluster = 1;
+  string scan_date = 2; // ISO 8601
+  kubescope.scanner.v1.ScanRiskCounts risks = 3;
+}
+
+message RiskChange {
+  string severity = 1;
+  int32 previous = 2;
+  int32 current = 3;
+  int32 change = 4;
+}
+
+message TrendAnalysisSection {
+  repeated ScanComparisonPoint scans_compared = 1;
+  repeated RiskChange risk_changes = 2;
+  repeated kubescope.scanner.v1.RBACFinding new_risks = 3;
+  repeated kubescope.scanner.v1.RBACFinding resolved_risks = 4;
+}
+
+message ReportData {
+  string workspace_id = 1;
+  string workspace_name = 2;
+  repeated string clusters = 3;
+  ReportType report_type = 4;
+  ReportFormat format = 5;
+  string generated_at = 6; // ISO 8601
+  kubescope.scanner.v1.ScanTotals summary = 7;
+  kubescope.scanner.v1.ScanRiskCounts risks = 8;
+  repeated kubescope.scanner.v1.RBACFinding findings = 9;
+  repeated FlatRBACRow rbac_rows = 10;
+
+  // Type-specific sections — only one set depending on report_type
+  optional ComplianceSection compliance = 11;
+  optional RiskAssessmentSection risk_assessment = 12;
+  optional TrendAnalysisSection trend_analysis = 13;
+}
+
+// ============================================
+// RPCs
+// ============================================
+
+message GenerateReportRequest {
+  string report_id = 1;
+  string workspace_id = 2;
+  string workspace_name = 3;
+  repeated string clusters = 4;
+  ReportType report_type = 5;
+  ReportFormat format = 6;
+}
+
+message GenerateReportResponse {
+  ReportStatus status = 1;
+  ReportData report_data = 2;
+  bytes file_content = 3;
+  string file_size = 4;
+  string error_message = 5; // set when status == FAILED
+}
+
+message GetReportRequest {
+  string workspace_id = 1;
+  string report_id = 2;
+}
+
+message GetReportResponse {
+  ReportStatus status = 1;
+  ReportData report_data = 2;
+  string file_size = 3;
+  string error_message = 4;
+}
+
+service ReportService {
+  rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse);
+  rpc GetReport(GetReportRequest) returns (GetReportResponse);
+}
