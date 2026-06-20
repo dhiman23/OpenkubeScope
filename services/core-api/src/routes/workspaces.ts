@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { requireAuth } from "../auth/middleware"
+import { requireAuth, requireCredentialsChanged } from "../auth/middleware"
 import {
   listWorkspaces,
   getOwnedWorkspace,
@@ -11,7 +11,7 @@ import {
 import { listClusters, createCluster, deleteCluster } from "../repositories/clusters"
 
 export const workspacesRouter = Router()
-workspacesRouter.use(requireAuth)
+workspacesRouter.use(requireAuth, requireCredentialsChanged)
 
 workspacesRouter.get("/", async (req, res) => {
   res.json({ workspaces: await listWorkspaces(req.user!.id) })

@@ -14,6 +14,7 @@ import { stripeWebhookRouter } from "./routes/stripe-webhook"
 import { cronRouter } from "./routes/cron"
 import { closeClients } from "./lib/grpc-clients"
 import { closePool } from "./db"
+import { ensureBootstrapAdmin } from "./repositories/users"
 
 const app = express()
 
@@ -46,6 +47,8 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 const port = Number(process.env.PORT || 8080)
 const server = app.listen(port, () => {
   console.log(`core-api listening on :${port}`)
+  // Jenkins-style first-boot seed of the admin/admin account.
+  ensureBootstrapAdmin().catch((err) => console.error("Bootstrap admin seed failed:", err))
 })
 
 async function shutdown() {

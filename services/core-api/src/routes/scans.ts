@@ -1,6 +1,6 @@
 import { Router } from "express"
 import multer from "multer"
-import { requireAuth } from "../auth/middleware"
+import { requireAuth, requireCredentialsChanged } from "../auth/middleware"
 import { getOwnedWorkspace } from "../repositories/workspaces"
 import { getSubscription, isPremium, FREE_SCAN_LIMIT } from "../repositories/subscriptions"
 import { tryReserveFreeScanSlot, incrementScanUsage, decrementScanUsage } from "../repositories/scan-usage"
@@ -10,7 +10,7 @@ import { scannerApi } from "../lib/grpc-clients"
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 32 * 1024 * 1024 } })
 
 export const scansRouter = Router()
-scansRouter.use(requireAuth)
+scansRouter.use(requireAuth, requireCredentialsChanged)
 
 // Upload + scan a snapshot. Ownership + free-tier quota enforced HERE (core-api
 // owns billing); rbac-scanner-service trusts the workspace_id we send.

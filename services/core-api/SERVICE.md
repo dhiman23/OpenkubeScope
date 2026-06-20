@@ -46,7 +46,19 @@ See [`.env.example`](.env.example).
 
 [`migrations/0001_create_core.sql`](migrations/0001_create_core.sql) creates the
 `core` schema: `users`, `workspaces`, `clusters`, `user_settings`,
-`subscriptions`, `scan_usage`. Run before starting.
+`subscriptions`, `scan_usage`.
+[`migrations/0002_admin_bootstrap.sql`](migrations/0002_admin_bootstrap.sql) adds
+username login + the forced-change flag. Run both before starting.
+
+## Bootstrap admin (Jenkins-style)
+
+On first boot, if there are no users, core-api seeds an admin account
+(`ensureBootstrapAdmin`): **username `admin`, password `admin`**, flagged
+`must_change_credentials`. Login returns `mustChange: true`; every protected
+route returns `403 MUST_CHANGE_CREDENTIALS` until the user calls
+`POST /auth/change-credentials` with a new username + password (defaults are
+rejected). A fresh token with `mustChange: false` is issued on success.
+Self-service email/password signup still exists alongside this.
 
 ## Health check
 
@@ -59,7 +71,8 @@ ALB target groups is DevOps scope.
 All under `/api`. All except `/auth/*` and the Stripe webhook require
 `Authorization: Bearer <jwt>`.
 
-- `POST /auth/signup`, `POST /auth/login` → `{ token, user }`
+- `POST /auth/signup` (email/password), `POST /auth/login` (by `username` or `email`) → `{ token, user, mustChange }`
+- `POST /auth/change-credentials` (auth) → set new username + password, returns a fresh token. The only action allowed while `mustChange` is true.
 - `GET/POST /workspaces`, `PATCH/DELETE /workspaces/:id`, `POST /workspaces/:id/activate`
 - `GET/POST /workspaces/:id/clusters`, `DELETE /workspaces/:id/clusters/:clusterId`
 - `POST /workspaces/:id/scans` (multipart `file`) — quota-checked, calls scanner

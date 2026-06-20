@@ -1,10 +1,10 @@
 import { Router } from "express"
-import { requireAuth } from "../auth/middleware"
+import { requireAuth, requireCredentialsChanged } from "../auth/middleware"
 import { getOwnedWorkspace } from "../repositories/workspaces"
 import { reportApi, report as reportProto } from "../lib/grpc-clients"
 
 export const reportsRouter = Router()
-reportsRouter.use(requireAuth)
+reportsRouter.use(requireAuth, requireCredentialsChanged)
 
 const FORMAT_CONTENT_TYPE: Record<number, string> = {
   [reportProto.ReportFormat.PDF]: "application/pdf",

@@ -1,11 +1,11 @@
 import { Router } from "express"
-import { requireAuth } from "../auth/middleware"
+import { requireAuth, requireCredentialsChanged } from "../auth/middleware"
 import { getOwnedWorkspace } from "../repositories/workspaces"
 import { getSubscription, isPremium, getCustomerIdForWorkspace } from "../repositories/subscriptions"
 import { getStripe } from "../lib/stripe"
 
 export const billingRouter = Router()
-billingRouter.use(requireAuth)
+billingRouter.use(requireAuth, requireCredentialsChanged)
 
 billingRouter.get("/:workspaceId/subscription", async (req, res) => {
   const ws = await getOwnedWorkspace(req.user!.id, req.params.workspaceId)
@@ -33,7 +33,7 @@ billingRouter.post("/:workspaceId/checkout", async (req, res) => {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       customer: existingCustomer || undefined,
-      customer_email: existingCustomer ? undefined : req.user!.email,
+      customer_email: existingCustomer ? undefined : req.user!.email ?? undefined,
       client_reference_id: ws.id,
       allow_promotion_codes: true,
       subscription_data: { metadata: { workspace_id: ws.id, user_id: req.user!.id } },
