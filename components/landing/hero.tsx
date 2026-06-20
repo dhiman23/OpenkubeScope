@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Play, Chrome } from "lucide-react"
+import { ArrowRight, Play } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { useRouter } from "next/navigation"
@@ -17,40 +17,19 @@ const floatingCards = [
 ]
 
 export function Hero() {
-  const { user, signInWithGoogle } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
   const [isSigningIn, setIsSigningIn] = useState(false)
 
-  const handleSignIn = async () => {
-    setIsSigningIn(true)
-    try {
-      await signInWithGoogle()
-    } catch (error) {
-      setIsSigningIn(false)
-      toast({
-        title: "Authentication error",
-        description: "Failed to sign in. Please try again.",
-        variant: "destructive",
-      })
-    }
+  const handleGetStarted = () => {
+    // Signed in -> dashboard; otherwise -> login page (username/password).
+    router.push(user ? "/app" : "/auth/login")
   }
 
-  const handleGetStarted = () => {
-    // If user is already signed in, go to dashboard
-    if (user) {
-      router.push("/app")
-      return
-    }
-    
-    // Otherwise, sign in with Google
-    handleSignIn()
-  }
-  
-  // Determine button text based on auth state
   const getButtonText = () => {
     if (user) return "Go to Dashboard"
-    return "Sign in with Google"
+    return "Sign in"
   }
 
   return (
@@ -149,7 +128,6 @@ export function Hero() {
                   </>
                 ) : (
                   <>
-                    {!user && <Chrome className="w-5 h-5" />}
                     {getButtonText()}
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </>

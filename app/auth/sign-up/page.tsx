@@ -1,6 +1,5 @@
 "use client"
 
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -15,7 +14,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Chrome, Mail, Lock, ArrowRight, Shield, User } from "lucide-react"
+import { Mail, Lock, ArrowRight, Shield, User } from "lucide-react"
+import { useAuth } from "@/app/providers/AuthProvider"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -23,46 +23,11 @@ export default function SignUpPage() {
   const [repeatPassword, setRepeatPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
-
-  const handleGoogleSignUp = async () => {
-    const supabase = createClient()
-    setIsGoogleLoading(true)
-    setError(null)
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-      
-      if (error) {
-        // Check if it's an OAuth configuration error
-        if (error.message.includes("Provider") || error.message.includes("blocked")) {
-          throw new Error("Google sign-up is not configured. Please enable the Google provider in your Supabase project settings under Authentication > Providers > Google.")
-        }
-        throw error
-      }
-      
-      // OAuth redirects automatically, so if we reach here without error, it worked
-      if (!data.url) {
-        throw new Error("OAuth redirect failed. Please try again.")
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "An error occurred"
-      setError(errorMessage)
-      setIsGoogleLoading(false)
-      
-      console.error("[KubeScope] Google OAuth error:", errorMessage)
-    }
-  }
+  const { signup } = useAuth()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
@@ -72,24 +37,15 @@ export default function SignUpPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters")
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters")
       setIsLoading(false)
       return
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-            `${window.location.origin}/app`,
-        },
-      })
-      if (error) throw error
-      router.push("/auth/sign-up-success")
+      await signup(email, password)
+      router.push("/app")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
@@ -127,39 +83,6 @@ export default function SignUpPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Google Sign Up */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-12 rounded-xl bg-white text-gray-900 hover:bg-gray-50 border-gray-200"
-              onClick={handleGoogleSignUp}
-              disabled={isGoogleLoading}
-            >
-              {isGoogleLoading ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full"
-                />
-              ) : (
-                <>
-                  <Chrome className="w-5 h-5 mr-2" />
-                  Sign up with Google
-                </>
-              )}
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with email
-                </span>
-              </div>
-            </div>
-
             {/* Email/Password Form */}
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">

@@ -198,22 +198,17 @@ const navItems = [
           isCollapsed ? "justify-center" : ""
         )}>
           <Avatar className="h-9 w-9 shrink-0">
-            {user?.user_metadata?.avatar_url && (
-              <AvatarImage src={user.user_metadata.avatar_url || "/placeholder.svg"} alt={user.user_metadata.full_name || user.email || "User"} />
-            )}
             <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-sm">
-              {user?.user_metadata?.full_name
-                ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-                : user?.email?.[0].toUpperCase() || "U"}
+              {(user?.username || user?.email)?.[0]?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.user_metadata?.full_name || user?.email || "User"}
+                {user?.username || user?.email || "User"}
               </p>
               <p className="text-xs text-sidebar-foreground/60 truncate">
-                {user?.email}
+                {user?.email || user?.username}
               </p>
             </div>
           )}
