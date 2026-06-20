@@ -97,6 +97,23 @@ export async function listLatestScansByCluster(workspaceId: string, clusterNames
   return rows.map(rowToScan)
 }
 
+// All scans for a workspace, newest first (mirrors loadScans/loadScansMeta).
+export async function listScans(workspaceId: string, metaOnly: boolean): Promise<Scan[]> {
+  const pool = getPool()
+
+  const dataCol = metaOnly ? `'{"subjects":[],"roles":[],"bindings":[],"findings":[]}'::jsonb AS scan_data` : "scan_data"
+
+  const { rows } = await pool.query<ScanRow>(
+    `SELECT id, workspace_id, file_name, cluster_name, ${dataCol}, totals, risk_counts, is_summary_mode, created_at
+       FROM scanner.scans
+      WHERE workspace_id = $1
+      ORDER BY created_at DESC`,
+    [workspaceId],
+  )
+
+  return rows.map(rowToScan)
+}
+
 export async function deleteScan(workspaceId: string, scanId: string): Promise<boolean> {
   const pool = getPool()
 

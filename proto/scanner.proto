@@ -184,6 +184,19 @@ message ListScansByClusterResponse {
   repeated Scan scans = 1;
 }
 
+// All scans for a workspace (mirrors the monolith's loadScans/loadScansMeta).
+// Used by core-api to render the scan list for the frontend.
+message ListScansRequest {
+  string workspace_id = 1;
+  // If true, omit dataset (subjects/roles/bindings/findings) — list views only
+  // need totals/risk_counts.
+  bool meta_only = 2;
+}
+
+message ListScansResponse {
+  repeated Scan scans = 1;
+}
+
 message DeleteScanRequest {
   string workspace_id = 1;
   string scan_id = 2;
@@ -196,6 +209,7 @@ message DeleteScanResponse {
 service RbacScannerService {
   rpc ScanSnapshot(ScanSnapshotRequest) returns (ScanSnapshotResponse);
   rpc GetScan(GetScanRequest) returns (GetScanResponse);
+  rpc ListScans(ListScansRequest) returns (ListScansResponse);
   rpc ListScansByCluster(ListScansByClusterRequest) returns (ListScansByClusterResponse);
   rpc DeleteScan(DeleteScanRequest) returns (DeleteScanResponse);
 }

@@ -1,8 +1,8 @@
 {
-  "name": "rbac-scanner-service",
+  "name": "report-service",
   "version": "0.1.0",
   "private": true,
-  "description": "gRPC service: parses RBAC snapshots, runs the findings engine, owns the scans table",
+  "description": "gRPC service: builds RBAC audit reports (JSON/CSV/PDF), owns the reports + scheduled_reports tables, calls rbac-scanner-service for scan data",
   "main": "dist/server.js",
   "scripts": {
     "gen:proto": "bash scripts/gen-proto.sh",
@@ -17,7 +17,9 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
     "@opentelemetry/sdk-node": "^0.57.0",
     "grpc-health-check": "^2.1.0",
-    "jszip": "^3.10.1",
+    "ioredis": "^5.4.2",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
     "long": "^5.2.4",
     "pg": "^8.13.1",
     "protobufjs": "^7.4.0"
