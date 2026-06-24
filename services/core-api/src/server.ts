@@ -9,8 +9,6 @@ import { authRouter } from "./routes/auth"
 import { workspacesRouter } from "./routes/workspaces"
 import { scansRouter } from "./routes/scans"
 import { reportsRouter } from "./routes/reports"
-import { billingRouter } from "./routes/billing"
-import { stripeWebhookRouter } from "./routes/stripe-webhook"
 import { cronRouter } from "./routes/cron"
 import { closeClients } from "./lib/grpc-clients"
 import { closePool } from "./db"
@@ -25,17 +23,12 @@ app.use(cors({ origin: corsOrigins, credentials: true }))
 // HTTP so it exposes a plain endpoint for K8s probes / ALB health checks.)
 app.get("/healthz", (_req, res) => res.json({ status: "ok", service: "core-api" }))
 
-// Stripe webhook needs the raw body for signature verification — mount BEFORE
-// the JSON body parser.
-app.use("/api/stripe/webhook", stripeWebhookRouter)
-
 app.use(express.json({ limit: "1mb" }))
 
 app.use("/api/auth", authRouter)
 app.use("/api/workspaces", workspacesRouter)
 app.use("/api/workspaces", scansRouter) // /:workspaceId/scans...
 app.use("/api/workspaces", reportsRouter) // /:workspaceId/reports..., scheduled-reports...
-app.use("/api/billing", billingRouter)
 app.use("/api/cron", cronRouter)
 
 // Fallback error handler.
