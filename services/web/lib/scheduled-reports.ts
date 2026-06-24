@@ -1,7 +1,7 @@
-// Scheduled Reports storage & scheduling logic for KubeScope.
+// Scheduled reports. Rewired from Supabase to core-api (REST).
 
-import { createClient } from "@/lib/supabase/client"
 import type { Report } from "@/lib/report-storage"
+import { scheduledReportsApi } from "./api-client"
 
 export type ScheduleFrequency = "daily" | "weekly" | "monthly"
 
@@ -25,6 +25,7 @@ export interface ScheduledReport {
   updated_at: string
 }
 
+// Display helper (server authoritatively computes the stored next_run_at).
 export function computeNextRun(frequency: ScheduleFrequency, from: Date = new Date()): Date {
   const next = new Date(from)
   switch (frequency) {
@@ -42,18 +43,11 @@ export function computeNextRun(frequency: ScheduleFrequency, from: Date = new Da
 }
 
 export async function listScheduledReports(workspaceId: string): Promise<ScheduledReport[]> {
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from("scheduled_reports")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Failed to list scheduled reports:", error.message)
+  try {
+    return (await scheduledReportsApi.list(workspaceId)) as ScheduledReport[]
+  } catch {
     return []
   }
-  return (data as ScheduledReport[]) || []
 }
 
 export async function createScheduledReport(params: {
@@ -66,41 +60,21 @@ export async function createScheduledReport(params: {
   slack_webhook_url?: string | null
   notify_email?: string | null
 }): Promise<ScheduledReport> {
-  const supabase = createClient()
-  const nextRun = computeNextRun(params.frequency).toISOString()
-
-  const { data, error } = await supabase
-    .from("scheduled_reports")
-    .insert({
-      workspace_id: params.workspace_id,
-      name: params.name,
-      report_type: params.report_type,
-      format: params.format,
-      clusters: params.clusters,
-      frequency: params.frequency,
-      slack_webhook_url: params.slack_webhook_url || null,
-      notify_email: params.notify_email || null,
-      enabled: true,
-      next_run_at: nextRun,
-    })
-    .select()
-    .single()
-
-  if (error) throw new Error(`Failed to create scheduled report: ${error.message}`)
-  return data as ScheduledReport
+  return (await scheduledReportsApi.create(params.workspace_id, {
+    name: params.name,
+    reportType: params.report_type,
+    format: params.format,
+    clusters: params.clusters,
+    frequency: params.frequency,
+    slackWebhookUrl: params.slack_webhook_url ?? undefined,
+    notifyEmail: params.notify_email ?? undefined,
+  })) as ScheduledReport
 }
 
-export async function deleteScheduledReport(id: string): Promise<void> {
-  const supabase = createClient()
-  const { error } = await supabase.from("scheduled_reports").delete().eq("id", id)
-  if (error) throw new Error(`Failed to delete scheduled report: ${error.message}`)
+export async function deleteScheduledReport(workspaceId: string, id: string): Promise<void> {
+  await scheduledReportsApi.remove(workspaceId, id)
 }
 
-export async function toggleScheduledReport(id: string, enabled: boolean): Promise<void> {
-  const supabase = createClient()
-  const { error } = await supabase
-    .from("scheduled_reports")
-    .update({ enabled })
-    .eq("id", id)
-  if (error) throw new Error(`Failed to toggle scheduled report: ${error.message}`)
+export async function toggleScheduledReport(workspaceId: string, id: string, enabled: boolean): Promise<void> {
+  await scheduledReportsApi.toggle(workspaceId, id, enabled)
 }

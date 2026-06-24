@@ -106,20 +106,13 @@ export default function BillingPage() {
 
   const statusLabel = useMemo(() => {
     if (!subscription) return "Free"
-    if (isPremium) {
-      if (subscription.cancelAtPeriodEnd) return "Unlimited (canceling)"
-      return "Unlimited"
-    }
+    if (isPremium) return "Unlimited"
     if (subscription.status === "past_due") return "Past due"
     if (subscription.status === "canceled") return "Canceled"
     return "Free"
   }, [subscription, isPremium])
 
-  const renewalLabel = isPremium
-    ? subscription?.cancelAtPeriodEnd
-      ? `Ends ${formatDate(subscription.currentPeriodEnd)}`
-      : `Renews ${formatDate(subscription?.currentPeriodEnd || null)}`
-    : "No active subscription"
+  const renewalLabel = isPremium ? "Unlimited plan active" : "No active subscription"
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

@@ -931,12 +931,12 @@ export async function createScanFromFile(file: File): Promise<Scan> {
 }
 
 // ============================================
-// STORAGE HELPERS (Workspace-aware with Supabase)
+// STORAGE HELPERS (Workspace-aware, via core-api)
 // ============================================
 
-import { getActiveWorkspaceId, getOrCreateActiveWorkspaceId } from "./workspace-manager"
+import { getOrCreateActiveWorkspaceId } from "./workspace-manager"
 import {
-  saveScans as saveScansToDB,
+  uploadScan as uploadScanToApi,
   loadScans as loadScansFromDB,
   loadScansMeta as loadScansMetaFromDB,
   getActiveScanId as getActiveScanIdFromDB,
@@ -945,17 +945,12 @@ import {
   deleteScan as deleteScanFromDB
 } from "./scan-storage"
 
-// saveScans now returns the saved Scan with the DB-assigned ID
-// Uses getOrCreateActiveWorkspaceId to ensure a workspace always exists
-export async function saveScans(scan: Scan, workspaceId?: string): Promise<Scan | null> {
-  // Use getOrCreateActiveWorkspaceId which creates a default workspace if needed
+// Upload a snapshot file: core-api parses + persists it server-side and returns
+// the resulting Scan. Replaces the old client-side parse + saveScans path.
+export async function uploadScanFile(file: File, workspaceId?: string): Promise<Scan | null> {
   const wsId = workspaceId || await getOrCreateActiveWorkspaceId()
-  if (!wsId) {
-    return null
-  }
-
-  const savedScan = await saveScansToDB(wsId, scan)
-  return savedScan
+  if (!wsId) return null
+  return await uploadScanToApi(wsId, file)
 }
 
 export async function loadScans(workspaceId?: string): Promise<Scan[]> {
@@ -1003,8 +998,10 @@ export async function getActiveScan(workspaceId?: string): Promise<Scan | null> 
   return await getActiveScanFromDB(wsId)
 }
 
-export async function deleteScan(scanId: string): Promise<void> {
-  await deleteScanFromDB(scanId)
+export async function deleteScan(scanId: string, workspaceId?: string): Promise<void> {
+  const wsId = workspaceId || await getOrCreateActiveWorkspaceId()
+  if (!wsId) return
+  await deleteScanFromDB(wsId, scanId)
 }
 
 // ============================================

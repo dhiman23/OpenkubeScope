@@ -57,11 +57,8 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Suspense } from "react"
 import Loading from "@/components/ui/loading"
-import { loadReports, createReport, deleteReport } from "@/lib/report-storage"
+import { loadReports, deleteReport, generateReport, downloadReport } from "@/lib/report-storage"
 import type { Report } from "@/lib/report-storage"
-import { generateReport } from "@/lib/report-generator"
-import type { ReportData } from "@/lib/report-generator"
-import { downloadPDFReport } from "@/lib/report-pdf"
 import { getActiveWorkspaceId, getActiveWorkspace } from "@/lib/workspace-manager"
 import { loadScansMeta } from "@/lib/scan-storage"
 import { useToast } from "@/hooks/use-toast"
@@ -140,78 +137,9 @@ const statusConfig = {
 // DOWNLOAD HANDLER
 // ============================================
 
-function handleDownloadUngated(report: Report) {
-  if (!report.report_data) return
-
-  const reportData = report.report_data as unknown as ReportData
-
-  if (report.format === "PDF") {
-    const fileName = `${report.report_name.replace(/\s+/g, "_")}.pdf`
-    downloadPDFReport(reportData, fileName)
-    return
-  }
-
-  // JSON or CSV — generate file blob and trigger download
-  let content: string
-  let mimeType: string
-  let ext: string
-
-  if (report.format === "CSV") {
-    // Rebuild CSV from report_data.rbac_rows using the production spec columns
-    const rows = reportData.rbac_rows || []
-    const headers = [
-      "Cluster",
-      "Namespace",
-      "Subject",
-      "Subject Type",
-      "Role",
-      "Resource",
-      "Verbs",
-      "Risk Level",
-      "Issue Description",
-      "Recommendation",
-    ]
-    const escape = (v: string) =>
-      v && (v.includes(",") || v.includes('"') || v.includes("\n"))
-        ? `"${v.replace(/"/g, '""')}"`
-        : v || ""
-    const csvLines = [headers.join(",")]
-    for (const row of rows) {
-      csvLines.push(
-        [
-          row.cluster,
-          row.namespace,
-          row.subject,
-          row.type,
-          row.role,
-          row.resource,
-          row.verbs,
-          row.risk,
-          row.issue,
-          row.recommendation,
-        ]
-          .map(escape)
-          .join(",")
-      )
-    }
-    content = csvLines.join("\n")
-    mimeType = "text/csv"
-    ext = "csv"
-  } else {
-    content = JSON.stringify(reportData, null, 2)
-    mimeType = "application/json"
-    ext = "json"
-  }
-
-  const blob = new Blob([content], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `${report.report_name.replace(/\s+/g, "_")}.${ext}`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+// The rendered file lives server-side; stream it from core-api.
+async function handleDownloadUngated(workspaceId: string, report: Report) {
+  await downloadReport(workspaceId, report.id, report.report_name.replace(/\s+/g, "_"))
 }
 
 // ============================================
@@ -837,23 +765,14 @@ export default function ReportsPage() {
       if (!workspaceId) return
 
       try {
-        // Create report record
-        const report = await createReport({
-          workspace_id: workspaceId,
-          scan_ids: [],
+        // Generate server-side (create + render + persist in one call).
+        await generateReport(workspaceId, {
           report_name: params.reportName,
           report_type: params.reportType as Report["report_type"],
           format: params.format as Report["format"],
           clusters: params.clusters,
         })
 
-        // Add to local state immediately
-        setReports((prev) => [report, ...prev])
-
-        // Generate report asynchronously
-        await generateReport(report, workspaceName)
-
-        // Refresh to get updated status
         await fetchReports()
 
         toast({
@@ -916,7 +835,7 @@ export default function ReportsPage() {
     async (id: string) => {
       if (!workspaceId) return
       try {
-        await deleteScheduledReport(id)
+        await deleteScheduledReport(workspaceId, id)
         setScheduledReports((prev) => prev.filter((s) => s.id !== id))
         toast({ title: "Schedule removed" })
       } catch (err) {
@@ -941,22 +860,30 @@ export default function ReportsPage() {
         })
         return
       }
-      handleDownloadUngated(report)
+      if (!workspaceId) return
+      handleDownloadUngated(workspaceId, report).catch((err) =>
+        toast({
+          title: "Download failed",
+          description: err instanceof Error ? err.message : "Unknown error",
+          variant: "destructive",
+        }),
+      )
     },
-    [isPremium, toast]
+    [isPremium, toast, workspaceId]
   )
 
   // Handle delete
   const handleDelete = useCallback(
     async (reportId: string) => {
+      if (!workspaceId) return
       try {
-        await deleteReport(reportId)
+        await deleteReport(workspaceId, reportId)
         setReports((prev) => prev.filter((r) => r.id !== reportId))
       } catch (err) {
         console.error("Failed to delete report:", err)
       }
     },
-    []
+    [workspaceId]
   )
 
   // Handle regenerate
@@ -964,17 +891,13 @@ export default function ReportsPage() {
     async (report: Report) => {
       if (!workspaceId) return
       try {
-        const newReport = await createReport({
-          workspace_id: workspaceId,
-          scan_ids: report.scan_ids,
+        await generateReport(workspaceId, {
           report_name: report.report_name,
           report_type: report.report_type,
           format: report.format,
           clusters: report.clusters,
+          scan_ids: report.scan_ids,
         })
-
-        setReports((prev) => [newReport, ...prev])
-        await generateReport(newReport, workspaceName)
         await fetchReports()
 
         toast({

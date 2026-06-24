@@ -111,3 +111,96 @@ export const authApi = {
   changeCredentials: (currentPassword: string, newUsername: string, newPassword: string) =>
     apiFetch<AuthResult>("/auth/change-credentials", { method: "POST", body: { currentPassword, newUsername, newPassword } }),
 }
+
+// ---- data APIs (core-api REST). Shapes mirror core-api's JSON responses. ----
+
+export interface ApiWorkspace {
+  id: string
+  name: string
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ApiCluster {
+  id: string
+  workspace_id: string
+  name: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export const workspacesApi = {
+  list: () => apiFetch<{ workspaces: ApiWorkspace[] }>("/workspaces").then((r) => r.workspaces),
+  create: (name: string, description?: string) =>
+    apiFetch<{ workspace: ApiWorkspace }>("/workspaces", { method: "POST", body: { name, description } }).then((r) => r.workspace),
+  update: (id: string, updates: { name?: string; description?: string }) =>
+    apiFetch<{ workspace: ApiWorkspace }>(`/workspaces/${id}`, { method: "PATCH", body: updates }).then((r) => r.workspace),
+  remove: (id: string) => apiFetch<{ deleted: boolean }>(`/workspaces/${id}`, { method: "DELETE" }),
+  activate: (id: string) => apiFetch<{ active: string }>(`/workspaces/${id}/activate`, { method: "POST" }),
+}
+
+export const clustersApi = {
+  list: (workspaceId: string) =>
+    apiFetch<{ clusters: ApiCluster[] }>(`/workspaces/${workspaceId}/clusters`).then((r) => r.clusters),
+  create: (workspaceId: string, name: string, kubeconfig?: string) =>
+    apiFetch<{ cluster: ApiCluster }>(`/workspaces/${workspaceId}/clusters`, { method: "POST", body: { name, kubeconfig } }).then((r) => r.cluster),
+  remove: (workspaceId: string, clusterId: string) =>
+    apiFetch<{ deleted: boolean }>(`/workspaces/${workspaceId}/clusters/${clusterId}`, { method: "DELETE" }),
+}
+
+// Scans come back from core-api already mapped to the frontend Scan shape
+// (string enums) — see core-api lib/scan-json.ts. Typed unknown here; the
+// scan-storage layer casts to the Scan type.
+export const scansApi = {
+  upload: (workspaceId: string, file: File) => {
+    const form = new FormData()
+    form.append("file", file)
+    return apiFetch<{ scan: unknown }>(`/workspaces/${workspaceId}/scans`, { method: "POST", form }).then((r) => r.scan)
+  },
+  list: (workspaceId: string, meta = false) =>
+    apiFetch<{ scans: unknown[] }>(`/workspaces/${workspaceId}/scans${meta ? "?meta=1" : ""}`).then((r) => r.scans),
+  get: (workspaceId: string, scanId: string) =>
+    apiFetch<{ scan: unknown }>(`/workspaces/${workspaceId}/scans/${scanId}`).then((r) => r.scan),
+  remove: (workspaceId: string, scanId: string) =>
+    apiFetch<{ deleted: boolean }>(`/workspaces/${workspaceId}/scans/${scanId}`, { method: "DELETE" }),
+}
+
+export const subscriptionApi = {
+  get: (workspaceId: string) =>
+    apiFetch<{ subscription: { workspaceId: string; tier: string; status: string }; premium: boolean }>(`/billing/${workspaceId}/subscription`),
+}
+
+export const reportsApi = {
+  list: (workspaceId: string) => apiFetch<{ reports: unknown[] }>(`/workspaces/${workspaceId}/reports`).then((r) => r.reports),
+  generate: (workspaceId: string, body: { reportName: string; reportType: string; format: string; clusters: string[]; scanIds?: string[] }) =>
+    apiFetch<{ reportId: string; status: string; fileSize: string }>(`/workspaces/${workspaceId}/reports`, { method: "POST", body }),
+  remove: (workspaceId: string, reportId: string) =>
+    apiFetch<{ deleted: boolean }>(`/workspaces/${workspaceId}/reports/${reportId}`, { method: "DELETE" }),
+  download: (workspaceId: string, reportId: string) => apiDownload(`/workspaces/${workspaceId}/reports/${reportId}/download`),
+}
+
+export const scheduledReportsApi = {
+  list: (workspaceId: string) =>
+    apiFetch<{ scheduledReports: unknown[] }>(`/workspaces/${workspaceId}/scheduled-reports`).then((r) => r.scheduledReports),
+  create: (workspaceId: string, body: Record<string, unknown>) =>
+    apiFetch<{ scheduledReport: unknown }>(`/workspaces/${workspaceId}/scheduled-reports`, { method: "POST", body }).then((r) => r.scheduledReport),
+  toggle: (workspaceId: string, id: string, enabled: boolean) =>
+    apiFetch<{ scheduledReport: unknown }>(`/workspaces/${workspaceId}/scheduled-reports/${id}`, { method: "PATCH", body: { enabled } }).then((r) => r.scheduledReport),
+  remove: (workspaceId: string, id: string) =>
+    apiFetch<{ deleted: boolean }>(`/workspaces/${workspaceId}/scheduled-reports/${id}`, { method: "DELETE" }),
+}
+
+// core-api stores the active workspace server-side, but for instant UX the
+// frontend also keeps a local pointer (active workspace + active scan). These
+// are display/selection pointers only — all data is authorized server-side.
+const ACTIVE_WS_KEY = "kubescope_active_workspace"
+export function getLocalActiveWorkspace(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(ACTIVE_WS_KEY)
+}
+export function setLocalActiveWorkspace(id: string): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(ACTIVE_WS_KEY, id)
+}

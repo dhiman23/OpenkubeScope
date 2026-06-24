@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth"
 import { workspacesRouter } from "./routes/workspaces"
 import { scansRouter } from "./routes/scans"
 import { reportsRouter } from "./routes/reports"
+import { subscriptionRouter } from "./routes/subscription"
 import { cronRouter } from "./routes/cron"
 import { closeClients } from "./lib/grpc-clients"
 import { closePool } from "./db"
@@ -29,6 +30,7 @@ app.use("/api/auth", authRouter)
 app.use("/api/workspaces", workspacesRouter)
 app.use("/api/workspaces", scansRouter) // /:workspaceId/scans...
 app.use("/api/workspaces", reportsRouter) // /:workspaceId/reports..., scheduled-reports...
+app.use("/api/billing", subscriptionRouter) // /:workspaceId/subscription (read-only)
 app.use("/api/cron", cronRouter)
 
 // Fallback error handler.

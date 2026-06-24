@@ -188,11 +188,13 @@ export function Hero() {
                   <span className="font-medium text-foreground">{card.title}</span>
                 </div>
                 <div className="mt-2 flex gap-2">
-                  {[...Array(3)].map((_, i) => (
-                    <div 
-                      key={i} 
+                  {/* Deterministic widths — Math.random() here caused an SSR/client
+                      hydration mismatch (server and client picked different values). */}
+                  {[52, 68, 44].map((w, i) => (
+                    <div
+                      key={i}
                       className="h-2 rounded-full bg-muted"
-                      style={{ width: `${40 + Math.random() * 40}px` }}
+                      style={{ width: `${w + index * 6}px` }}
                     />
                   ))}
                 </div>

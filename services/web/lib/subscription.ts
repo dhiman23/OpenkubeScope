@@ -1,46 +1,26 @@
-// Subscription data + feature-gate logic.
-// Reads from the public.subscriptions table (workspace-scoped RLS).
+// Subscription data + feature-gate logic. Rewired from Supabase to core-api.
+// Stripe is gone — tier is set internally server-side; this just reads it.
 
-import { createClient } from "@/lib/supabase/client"
+import { subscriptionApi } from "./api-client"
 
 export type Tier = "free" | "unlimited"
-export type SubscriptionStatus =
-  | "inactive"
-  | "active"
-  | "trialing"
-  | "past_due"
-  | "canceled"
-  | "incomplete"
+export type SubscriptionStatus = "inactive" | "active" | "trialing" | "past_due" | "canceled" | "incomplete"
 
 export interface Subscription {
   workspaceId: string
   tier: Tier
   status: SubscriptionStatus
-  stripeCustomerId: string | null
-  stripeSubscriptionId: string | null
-  currentPeriodEnd: string | null
-  cancelAtPeriodEnd: boolean
 }
 
 export const FREE_SCAN_LIMIT = 1
 
-// Premium features — used by UI gates and server-side enforcement.
-export type PremiumFeature =
-  | "rbac-map"
-  | "pdf-export"
-  | "full-findings"
-  | "unlimited-scans"
+export type PremiumFeature = "rbac-map" | "pdf-export" | "full-findings" | "unlimited-scans"
 
 export const DEFAULT_FREE_SUBSCRIPTION: Omit<Subscription, "workspaceId"> = {
   tier: "free",
   status: "inactive",
-  stripeCustomerId: null,
-  stripeSubscriptionId: null,
-  currentPeriodEnd: null,
-  cancelAtPeriodEnd: false,
 }
 
-// Short TTL cache to avoid refetching during a single render pass / event burst.
 const subCache = new Map<string, { sub: Subscription; ts: number }>()
 const CACHE_TTL_MS = 5_000
 
@@ -50,37 +30,22 @@ export function invalidateSubscriptionCache(workspaceId?: string): void {
 }
 
 export async function getSubscription(workspaceId: string): Promise<Subscription> {
-  if (!workspaceId) {
-    return { workspaceId: "", ...DEFAULT_FREE_SUBSCRIPTION }
-  }
+  if (!workspaceId) return { workspaceId: "", ...DEFAULT_FREE_SUBSCRIPTION }
 
   const cached = subCache.get(workspaceId)
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.sub
 
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .select(
-      "workspace_id, tier, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end"
-    )
-    .eq("workspace_id", workspaceId)
-    .maybeSingle()
-
-  if (error) {
-    console.error("Error fetching subscription:", error.message)
+  let sub: Subscription
+  try {
+    const res = await subscriptionApi.get(workspaceId)
+    sub = {
+      workspaceId,
+      tier: (res.subscription.tier as Tier) ?? "free",
+      status: (res.subscription.status as SubscriptionStatus) ?? "inactive",
+    }
+  } catch {
+    sub = { workspaceId, ...DEFAULT_FREE_SUBSCRIPTION }
   }
-
-  const sub: Subscription = data
-    ? {
-        workspaceId: data.workspace_id,
-        tier: (data.tier as Tier) ?? "free",
-        status: (data.status as SubscriptionStatus) ?? "inactive",
-        stripeCustomerId: data.stripe_customer_id,
-        stripeSubscriptionId: data.stripe_subscription_id,
-        currentPeriodEnd: data.current_period_end,
-        cancelAtPeriodEnd: !!data.cancel_at_period_end,
-      }
-    : { workspaceId, ...DEFAULT_FREE_SUBSCRIPTION }
 
   subCache.set(workspaceId, { sub, ts: Date.now() })
   return sub
@@ -100,31 +65,20 @@ export function getScanLimit(sub: Subscription | null | undefined): number {
   return isPremiumSubscription(sub) ? Infinity : FREE_SCAN_LIMIT
 }
 
-export function canUseFeature(
-  sub: Subscription | null | undefined,
-  _feature: PremiumFeature
-): boolean {
-  // All premium features currently share a single gate (unlimited tier).
-  // Split per-feature gating here if pricing tiers expand.
+export function canUseFeature(sub: Subscription | null | undefined, _feature: PremiumFeature): boolean {
   return isPremiumSubscription(sub)
 }
 
 export function notifySubscriptionChanged(workspaceId?: string): void {
   invalidateSubscriptionCache(workspaceId)
   if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent("kubescope-subscription-updated", {
-        detail: { workspaceId },
-      })
-    )
+    window.dispatchEvent(new CustomEvent("kubescope-subscription-updated", { detail: { workspaceId } }))
   }
 }
 
 export class ScanLimitError extends Error {
   constructor(public readonly limit: number) {
-    super(
-      `Free plan allows only ${limit} scan${limit === 1 ? "" : "s"}. Upgrade to Unlimited for unlimited scans.`
-    )
+    super(`Free plan allows only ${limit} scan${limit === 1 ? "" : "s"}. Upgrade to Unlimited for unlimited scans.`)
     this.name = "ScanLimitError"
   }
 }

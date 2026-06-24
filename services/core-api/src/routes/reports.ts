@@ -2,6 +2,7 @@ import { Router } from "express"
 import { requireAuth, requireCredentialsChanged } from "../auth/middleware"
 import { getOwnedWorkspace } from "../repositories/workspaces"
 import { reportApi, report as reportProto } from "../lib/grpc-clients"
+import { reportToJson, scheduledToJson } from "../lib/report-json"
 
 export const reportsRouter = Router()
 reportsRouter.use(requireAuth, requireCredentialsChanged)
@@ -51,7 +52,7 @@ reportsRouter.get("/:workspaceId/reports", async (req, res) => {
   const ws = await getOwnedWorkspace(req.user!.id, req.params.workspaceId)
   if (!ws) return res.status(404).json({ error: "Workspace not found" })
   const result = await reportApi.listReports({ workspaceId: ws.id })
-  res.json({ reports: result.reports })
+  res.json({ reports: result.reports.map(reportToJson) })
 })
 
 // Download the rendered report file (PDF/CSV/JSON bytes).
@@ -87,7 +88,7 @@ reportsRouter.get("/:workspaceId/scheduled-reports", async (req, res) => {
   const ws = await getOwnedWorkspace(req.user!.id, req.params.workspaceId)
   if (!ws) return res.status(404).json({ error: "Workspace not found" })
   const result = await reportApi.listScheduledReports({ workspaceId: ws.id })
-  res.json({ scheduledReports: result.scheduledReports })
+  res.json({ scheduledReports: result.scheduledReports.map(scheduledToJson) })
 })
 
 reportsRouter.post("/:workspaceId/scheduled-reports", async (req, res) => {
@@ -108,7 +109,7 @@ reportsRouter.post("/:workspaceId/scheduled-reports", async (req, res) => {
     slackWebhookUrl: typeof slackWebhookUrl === "string" ? slackWebhookUrl : undefined,
     notifyEmail: typeof notifyEmail === "string" ? notifyEmail : undefined,
   })
-  res.status(201).json({ scheduledReport: result.scheduledReport })
+  res.status(201).json({ scheduledReport: scheduledToJson(result.scheduledReport!) })
 })
 
 reportsRouter.patch("/:workspaceId/scheduled-reports/:id", async (req, res) => {
@@ -118,7 +119,7 @@ reportsRouter.patch("/:workspaceId/scheduled-reports/:id", async (req, res) => {
   if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled (boolean) required" })
   try {
     const result = await reportApi.toggleScheduledReport({ workspaceId: ws.id, scheduledReportId: req.params.id, enabled })
-    res.json({ scheduledReport: result.scheduledReport })
+    res.json({ scheduledReport: scheduledToJson(result.scheduledReport!) })
   } catch {
     res.status(404).json({ error: "Scheduled report not found" })
   }

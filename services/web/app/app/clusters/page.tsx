@@ -50,10 +50,9 @@ import Loading from "./loading"
 import { useToast } from "@/hooks/use-toast"
 import {
   type Scan,
-  createScanFromFile,
+  uploadScanFile,
   loadScansMeta,
   loadScans,
-  saveScans,
   setActiveScanId,
   setWorkspaceMode,
   deleteScan,
@@ -148,23 +147,18 @@ function ClustersContent() {
 
     try {
       setAnalyzeProgress(10)
-      setAnalyzePhase("Parsing RBAC data...")
+      setAnalyzePhase("Uploading & analyzing snapshot...")
 
-      // Create scan from file (does reading + parsing + analysis)
-      const newScan = await createScanFromFile(selectedFile)
-      setAnalyzeProgress(80)
-      setAnalyzePhase("Saving scan...")
-
+      // Upload the file — core-api parses, runs the findings engine, and
+      // persists it server-side, returning the saved scan.
+      const savedScan = await uploadScanFile(selectedFile)
       setAnalyzeProgress(100)
       setAnalyzePhase("Complete!")
 
-      // Save scan to database - this returns the scan with DB-assigned ID
-      const savedScan = await saveScans(newScan)
-      
       if (!savedScan) {
         throw new Error("Failed to save scan - no workspace selected")
       }
-      
+
       // Set this as the active scan for the current workspace
       await setActiveScanId(savedScan.id)
       await setWorkspaceMode("real")

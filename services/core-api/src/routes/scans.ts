@@ -5,6 +5,7 @@ import { getOwnedWorkspace } from "../repositories/workspaces"
 import { getSubscription, isPremium, FREE_SCAN_LIMIT } from "../repositories/subscriptions"
 import { tryReserveFreeScanSlot, incrementScanUsage, decrementScanUsage } from "../repositories/scan-usage"
 import { scannerApi } from "../lib/grpc-clients"
+import { scanToJson } from "../lib/scan-json"
 
 // In-memory upload — snapshots are small JSON/ZIP files. 32MB cap.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 32 * 1024 * 1024 } })
@@ -44,7 +45,7 @@ scansRouter.post("/:workspaceId/scans", upload.single("file"), async (req, res) 
       fileContent: req.file.buffer,
       fileSize: req.file.size,
     })
-    return res.status(201).json({ scan: result.scan })
+    return res.status(201).json({ scan: scanToJson(result.scan) })
   } catch (err) {
     // Roll back the reserved quota slot if the scan failed to persist.
     if (reserved) await decrementScanUsage(ws.id).catch(() => {})
@@ -57,7 +58,7 @@ scansRouter.get("/:workspaceId/scans", async (req, res) => {
   if (!ws) return res.status(404).json({ error: "Workspace not found" })
   const meta = req.query.meta === "1" || req.query.meta === "true"
   const result = await scannerApi.listScans({ workspaceId: ws.id, metaOnly: meta })
-  res.json({ scans: result.scans })
+  res.json({ scans: result.scans.map(scanToJson) })
 })
 
 scansRouter.get("/:workspaceId/scans/:scanId", async (req, res) => {
@@ -65,7 +66,7 @@ scansRouter.get("/:workspaceId/scans/:scanId", async (req, res) => {
   if (!ws) return res.status(404).json({ error: "Workspace not found" })
   try {
     const result = await scannerApi.getScan({ workspaceId: ws.id, scanId: req.params.scanId })
-    res.json({ scan: result.scan })
+    res.json({ scan: scanToJson(result.scan) })
   } catch {
     res.status(404).json({ error: "Scan not found" })
   }
