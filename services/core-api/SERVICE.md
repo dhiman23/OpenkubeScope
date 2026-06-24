@@ -2,9 +2,9 @@
 
 The BFF (backend-for-frontend). REST/HTTP-facing for the Next.js frontend;
 calls `rbac-scanner-service` and `report-service` internally over gRPC. Owns
-auth, workspaces, clusters, billing, and scan-quota enforcement. Replaces the
+auth, workspaces, clusters, and scan-quota enforcement. Replaces the
 monolith's Supabase Auth (now `core.users` + JWT) and the API routes under
-`app/api/*`.
+`app/api/*`. No Stripe / payment provider — tier is set internally.
 
 ## Runtime
 
@@ -13,7 +13,6 @@ monolith's Supabase Auth (now `core.users` + JWT) and the API routes under
 - Database: AWS RDS Postgres via `pg`, owns the `core` schema — see [`migrations/0001_create_core.sql`](migrations/0001_create_core.sql)
 - gRPC **client** of both internal services; stubs generated from [`proto/scanner.proto`](../../proto/scanner.proto) + [`proto/report.proto`](../../proto/report.proto) via `ts-proto` (needs `protoc` at build time)
 - Auth: HMAC-signed JWTs (`jsonwebtoken`), passwords hashed with `bcryptjs`
-- Billing: Stripe (`stripe`)
 
 ## Port
 
@@ -31,11 +30,8 @@ monolith's Supabase Auth (now `core.users` + JWT) and the API routes under
 | `AUTH_JWT_EXPIRES_IN` | no (default `7d`) | JWT lifetime |
 | `SCANNER_SERVICE_ADDR` | yes | gRPC address of rbac-scanner-service |
 | `REPORT_SERVICE_ADDR` | yes | gRPC address of report-service |
-| `STRIPE_SECRET_KEY` | for billing | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | for billing | Stripe webhook signing secret |
-| `STRIPE_PRICE_ID_UNLIMITED` | for billing | Price ID for the Unlimited plan |
 | `CRON_SECRET` | for cron | Bearer token gating `POST /api/cron/scheduled-reports` |
-| `PUBLIC_SITE_URL` | no | Frontend base URL (Stripe redirects) |
+| `PUBLIC_SITE_URL` | no | Frontend base URL |
 | `CORS_ORIGINS` | no (default `http://localhost:3000`) | Comma-separated allowed origins |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP collector URL; tracing off if unset |
 | `OTEL_SERVICE_NAME` | no (default `core-api`) | OTel service name |
@@ -68,8 +64,7 @@ ALB target groups is DevOps scope.
 
 ## REST API surface
 
-All under `/api`. All except `/auth/*` and the Stripe webhook require
-`Authorization: Bearer <jwt>`.
+All under `/api`. All except `/auth/*` require `Authorization: Bearer <jwt>`.
 
 - `POST /auth/signup` (email/password), `POST /auth/login` (by `username` or `email`) → `{ token, user, mustChange }`
 - `POST /auth/change-credentials` (auth) → set new username + password, returns a fresh token. The only action allowed while `mustChange` is true.
@@ -79,8 +74,6 @@ All under `/api`. All except `/auth/*` and the Stripe webhook require
 - `GET /workspaces/:id/scans` (`?meta=1`), `GET/DELETE /workspaces/:id/scans/:scanId`
 - `POST /workspaces/:id/reports`, `GET /workspaces/:id/reports`, `GET /workspaces/:id/reports/:reportId/download`, `DELETE …`
 - `GET/POST /workspaces/:id/scheduled-reports`, `PATCH/DELETE …/:id`
-- `GET /billing/:id/subscription`, `POST /billing/:id/checkout`, `POST /billing/:id/portal`
-- `POST /api/stripe/webhook` (raw body, signature-verified; no auth)
 - `POST /api/cron/scheduled-reports` (bearer `CRON_SECRET`)
 
 ## Trust boundary
@@ -97,7 +90,6 @@ groups).
 - Free-tier scan limit is enforced with an **atomic** conditional increment (`core.scan_usage`), replacing the monolith's count-then-insert TOCTOU race.
 - `CRON_SECRET` is compared in **constant time** (`crypto.timingSafeEqual`), not `===`.
 - Login returns the same error whether the email is unknown or the password is wrong (no account enumeration).
-- Stripe webhook signature is verified against the raw request body before any processing.
 - `deleteCluster` / scan deletes filter by `workspace_id` in the query (no reliance on RLS, which doesn't exist at this layer).
 
 ## Build / run
