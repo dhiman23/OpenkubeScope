@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/app/providers/AuthProvider'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -37,9 +36,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <ProtectedRoute>
-              {children}
-            </ProtectedRoute>
+            {children}
           </AuthProvider>
         </ThemeProvider>
         <Analytics />

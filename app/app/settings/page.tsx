@@ -147,11 +147,11 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name">Username</Label>
                 <Input
                   id="name"
-                  defaultValue={user?.user_metadata?.full_name || ""}
-                  placeholder="Your name"
+                  defaultValue={user?.username || ""}
+                  placeholder="Your username"
                   disabled
                 />
               </div>

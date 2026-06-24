@@ -136,20 +136,25 @@ message ReportData {
 // ============================================
 
 message GenerateReportRequest {
+  // If empty, report-service generates a new report id and persists a new row.
+  // If set, it updates the existing row (used by scheduled-report runs).
   string report_id = 1;
   string workspace_id = 2;
   string workspace_name = 3;
   repeated string clusters = 4;
   ReportType report_type = 5;
   ReportFormat format = 6;
+  string report_name = 7;
+  repeated string scan_ids = 8;
 }
 
 message GenerateReportResponse {
-  ReportStatus status = 1;
-  ReportData report_data = 2;
-  bytes file_content = 3;
-  string file_size = 4;
-  string error_message = 5; // set when status == FAILED
+  string report_id = 1;
+  ReportStatus status = 2;
+  ReportData report_data = 3;
+  bytes file_content = 4;
+  string file_size = 5;
+  string error_message = 6; // set when status == FAILED
 }
 
 message GetReportRequest {
@@ -162,9 +167,146 @@ message GetReportResponse {
   ReportData report_data = 2;
   string file_size = 3;
   string error_message = 4;
+  // The rendered report file bytes (JSON/CSV/PDF) for re-download. Empty if the
+  // report failed or is still generating.
+  bytes file_content = 5;
+  ReportFormat format = 6;
+  string report_name = 7;
+}
+
+// Persisted report row (report-service owns the `report.reports` table).
+message Report {
+  string id = 1;
+  string workspace_id = 2;
+  repeated string scan_ids = 3;
+  string report_name = 4;
+  ReportType report_type = 5;
+  ReportFormat format = 6;
+  repeated string clusters = 7;
+  ReportStatus status = 8;
+  kubescope.scanner.v1.ScanRiskCounts risk_summary = 9;
+  string file_size = 10;
+  string error_message = 11;
+  string created_at = 12;
+  string updated_at = 13;
+}
+
+message ListReportsRequest {
+  string workspace_id = 1;
+}
+
+message ListReportsResponse {
+  repeated Report reports = 1;
+}
+
+message DeleteReportRequest {
+  string workspace_id = 1;
+  string report_id = 2;
+}
+
+message DeleteReportResponse {
+  bool deleted = 1;
+}
+
+// ============================================
+// SCHEDULED REPORTS
+// ============================================
+
+enum ScheduleFrequency {
+  SCHEDULE_FREQUENCY_UNSPECIFIED = 0;
+  DAILY = 1;
+  WEEKLY = 2;
+  MONTHLY = 3;
+}
+
+message ScheduledReport {
+  string id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  ReportType report_type = 4;
+  ReportFormat format = 5;
+  repeated string clusters = 6;
+  ScheduleFrequency frequency = 7;
+  optional string slack_webhook_url = 8;
+  optional string notify_email = 9;
+  bool enabled = 10;
+  string next_run_at = 11;
+  optional string last_run_at = 12;
+  optional string last_run_status = 13; // "success" | "failed"
+  optional string last_run_error = 14;
+  optional string last_report_id = 15;
+  string created_at = 16;
+  string updated_at = 17;
+}
+
+message ListScheduledReportsRequest {
+  string workspace_id = 1;
+}
+
+message ListScheduledReportsResponse {
+  repeated ScheduledReport scheduled_reports = 1;
+}
+
+message CreateScheduledReportRequest {
+  string workspace_id = 1;
+  string workspace_name = 2;
+  string name = 3;
+  ReportType report_type = 4;
+  ReportFormat format = 5;
+  repeated string clusters = 6;
+  ScheduleFrequency frequency = 7;
+  optional string slack_webhook_url = 8;
+  optional string notify_email = 9;
+}
+
+message CreateScheduledReportResponse {
+  ScheduledReport scheduled_report = 1;
+}
+
+message DeleteScheduledReportRequest {
+  string workspace_id = 1;
+  string scheduled_report_id = 2;
+}
+
+message DeleteScheduledReportResponse {
+  bool deleted = 1;
+}
+
+message ToggleScheduledReportRequest {
+  string workspace_id = 1;
+  string scheduled_report_id = 2;
+  bool enabled = 3;
+}
+
+message ToggleScheduledReportResponse {
+  ScheduledReport scheduled_report = 1;
+}
+
+// Invoked by core-api's cron endpoint (Vercel cron -> core-api -> here).
+// Runs every scheduled report whose next_run_at <= now and enabled = true,
+// generating each report and firing Slack notifications. Workspace name is
+// resolved by report-service is not possible (it doesn't own workspaces), so
+// core-api passes a name lookup is omitted — reports use the stored name.
+message RunDueScheduledReportsRequest {
+  // Optional cap on how many due reports to process in one invocation.
+  int32 limit = 1;
+}
+
+message RunDueScheduledReportsResponse {
+  int32 processed = 1;
+  int32 succeeded = 2;
+  int32 failed = 3;
 }
 
 service ReportService {
   rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse);
   rpc GetReport(GetReportRequest) returns (GetReportResponse);
+  rpc ListReports(ListReportsRequest) returns (ListReportsResponse);
+  rpc DeleteReport(DeleteReportRequest) returns (DeleteReportResponse);
+
+  rpc ListScheduledReports(ListScheduledReportsRequest) returns (ListScheduledReportsResponse);
+  rpc CreateScheduledReport(CreateScheduledReportRequest) returns (CreateScheduledReportResponse);
+  rpc DeleteScheduledReport(DeleteScheduledReportRequest) returns (DeleteScheduledReportResponse);
+  rpc ToggleScheduledReport(ToggleScheduledReportRequest) returns (ToggleScheduledReportResponse);
+  rpc RunDueScheduledReports(RunDueScheduledReportsRequest) returns (RunDueScheduledReportsResponse);
 }

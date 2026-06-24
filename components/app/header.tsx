@@ -199,13 +199,8 @@ export function AppHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="rounded-xl p-1">
                 <Avatar className="h-8 w-8">
-                  {user?.user_metadata?.avatar_url && (
-                    <AvatarImage src={user.user_metadata.avatar_url || "/placeholder.svg"} alt={user.user_metadata.full_name || user.email || "User"} />
-                  )}
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                    {user?.user_metadata?.full_name
-                      ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-                      : user?.email?.[0].toUpperCase() || "U"}
+                    {(user?.username || user?.email)?.[0]?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -213,8 +208,8 @@ export function AppHeader() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div>
-                  <p className="font-medium">{user?.user_metadata?.full_name || user?.email || "User"}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  <p className="font-medium">{user?.username || user?.email || "User"}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email || user?.username}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

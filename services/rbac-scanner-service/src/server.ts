@@ -1,9 +1,13 @@
+// Telemetry first so auto-instrumentation can patch grpc/pg before they load.
+import { startTelemetry, shutdownTelemetry } from "./telemetry"
+startTelemetry()
+
 import * as grpc from "@grpc/grpc-js"
 import { HealthImplementation } from "grpc-health-check"
 
 import { RbacScannerServiceService, type RbacScannerServiceServer } from "./generated/scanner"
 import { createScanFromBuffer } from "./lib/rbac-engine"
-import { deleteScan, getScan, listLatestScansByCluster, saveScan } from "./lib/scan-repository"
+import { deleteScan, getScan, listLatestScansByCluster, listScans, saveScan } from "./lib/scan-repository"
 import { scanToProto } from "./lib/proto-mapper"
 
 const SERVICE_NAME = "kubescope.scanner.v1.RbacScannerService"
@@ -40,6 +44,21 @@ const handlers: RbacScannerServiceServer = {
       }
 
       callback(null, { scan: scanToProto(workspaceId, scan) })
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: toMessage(err) })
+    }
+  },
+
+  async listScans(call, callback) {
+    try {
+      const { workspaceId, metaOnly } = call.request
+      if (!workspaceId) {
+        callback({ code: grpc.status.INVALID_ARGUMENT, message: "workspace_id is required" })
+        return
+      }
+
+      const scans = await listScans(workspaceId, metaOnly)
+      callback(null, { scans: scans.map((s) => scanToProto(workspaceId, s)) })
     } catch (err) {
       callback({ code: grpc.status.INTERNAL, message: toMessage(err) })
     }
@@ -100,7 +119,10 @@ function main() {
   const shutdown = () => {
     console.log("rbac-scanner-service shutting down")
     health.setStatus(SERVICE_NAME, "NOT_SERVING")
-    server.tryShutdown(() => process.exit(0))
+    server.tryShutdown(async () => {
+      await shutdownTelemetry()
+      process.exit(0)
+    })
   }
   process.on("SIGTERM", shutdown)
   process.on("SIGINT", shutdown)
