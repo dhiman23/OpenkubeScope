@@ -10,3 +10,15 @@ next-env.d.ts
 *.tsbuildinfo
 .DS_Store
 .claude/
+*.pem
+
+infra/.terraform/
+
+infra/*.tfstate
+infra/*.tfstate.*
+
+infra/*.tfplan
+
+infra/*.tfvars
+infra/*.tfvars.json
+infra/.terraform.lock.hcl
