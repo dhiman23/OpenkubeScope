@@ -26,25 +26,16 @@ interface SubRow {
   status: string
 }
 
+// Billing/Stripe removed — every workspace is treated as Unlimited. This opens
+// all premium features (RBAC map, PDF export, full findings) and lifts the
+// free-tier scan quota. To reintroduce tiers later, read core.subscriptions
+// here instead of returning a fixed unlimited subscription.
 export async function getSubscription(workspaceId: string): Promise<Subscription> {
-  const pool = getPool()
-  const { rows } = await pool.query<SubRow>(
-    `SELECT workspace_id, tier, status FROM core.subscriptions WHERE workspace_id = $1`,
-    [workspaceId],
-  )
-  const data = rows[0]
-  if (!data) return { workspaceId, ...DEFAULT_FREE }
-  return {
-    workspaceId: data.workspace_id,
-    tier: (data.tier as Tier) ?? "free",
-    status: data.status ?? "inactive",
-  }
+  return { workspaceId, tier: "unlimited", status: "active" }
 }
 
-export function isPremium(sub: Subscription | null | undefined): boolean {
-  if (!sub) return false
-  if (sub.tier !== "unlimited") return false
-  return sub.status === "active" || sub.status === "trialing"
+export function isPremium(_sub: Subscription | null | undefined): boolean {
+  return true
 }
 
 // Set a workspace's tier internally (no payment provider). Used by an
