@@ -37,14 +37,17 @@ const CATEGORY_TO_PROTO: Record<engine.RBACFinding["category"], proto.FindingCat
 }
 
 function subjectToProto(s: engine.RBACSubject): proto.RBACSubject {
-  return { name: s.name, kind: SUBJECT_KIND_TO_PROTO[s.kind], namespace: s.namespace }
+  return { name: s.name, kind: SUBJECT_KIND_TO_PROTO[s.kind] ?? proto.SubjectKind.USER, namespace: s.namespace }
 }
 
 function ruleToProto(r: engine.RBACRule): proto.RBACRule {
+  // Snapshot files can embed findings/rules with missing fields — every repeated
+  // field is coalesced to [] so proto serialization (which iterates them) never
+  // throws "X is not iterable".
   return {
-    apiGroups: r.apiGroups,
-    resources: r.resources,
-    verbs: r.verbs,
+    apiGroups: r.apiGroups || [],
+    resources: r.resources || [],
+    verbs: r.verbs || [],
     resourceNames: r.resourceNames || [],
   }
 }
@@ -52,19 +55,19 @@ function ruleToProto(r: engine.RBACRule): proto.RBACRule {
 function roleToProto(r: engine.RBACRole): proto.RBACRole {
   return {
     name: r.name,
-    kind: ROLE_KIND_TO_PROTO[r.kind],
+    kind: ROLE_KIND_TO_PROTO[r.kind] ?? proto.RoleKind.ROLE,
     namespace: r.namespace,
-    rules: r.rules.map(ruleToProto),
+    rules: (r.rules || []).map(ruleToProto),
   }
 }
 
 function bindingToProto(b: engine.RBACBinding): proto.RBACBinding {
   return {
     name: b.name,
-    kind: BINDING_KIND_TO_PROTO[b.kind],
+    kind: BINDING_KIND_TO_PROTO[b.kind] ?? proto.BindingKind.ROLE_BINDING,
     namespace: b.namespace,
-    roleRef: { kind: b.roleRef.kind, name: b.roleRef.name },
-    subjects: b.subjects.map((s) => ({ kind: s.kind, name: s.name, namespace: s.namespace })),
+    roleRef: { kind: b.roleRef?.kind || "", name: b.roleRef?.name || "" },
+    subjects: (b.subjects || []).map((s) => ({ kind: s.kind, name: s.name, namespace: s.namespace })),
   }
 }
 
@@ -73,17 +76,21 @@ function findingToProto(f: engine.RBACFinding): proto.RBACFinding {
     id: f.id,
     title: f.title,
     description: f.description,
-    severity: SEVERITY_TO_PROTO[f.severity],
-    category: CATEGORY_TO_PROTO[f.category],
-    subject: f.subject,
-    subjectType: f.subjectType,
-    role: f.role,
-    namespace: f.namespace,
-    remediation: f.remediation,
-    discoveredAt: f.discoveredAt,
-    affectedResources: f.affectedResources,
-    impactedSubjects: f.impactedSubjects,
-    evidence: f.evidence,
+    // Embedded findings may use unmapped severities/categories (e.g. the demo
+    // dataset's "Privilege Escalation"); fall back instead of emitting undefined.
+    severity: SEVERITY_TO_PROTO[f.severity] ?? proto.Severity.LOW,
+    category: CATEGORY_TO_PROTO[f.category] ?? proto.FindingCategory.MISCONFIGURATION,
+    subject: f.subject ?? "",
+    subjectType: f.subjectType ?? "",
+    role: f.role ?? "",
+    namespace: f.namespace ?? "",
+    remediation: f.remediation ?? "",
+    discoveredAt: f.discoveredAt ?? new Date().toISOString(),
+    affectedResources: f.affectedResources || [],
+    impactedSubjects: f.impactedSubjects || [],
+    evidence: f.evidence
+      ? { apiGroups: f.evidence.apiGroups || [], resources: f.evidence.resources || [], verbs: f.evidence.verbs || [] }
+      : undefined,
   }
 }
 

@@ -70,7 +70,14 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
     payload = JSON.stringify(body)
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, { method, headers, body: payload })
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { method, headers, body: payload })
+  } catch {
+    // Network/connection failure (e.g. core-api not running). Surface a clear,
+    // catchable error instead of a raw "Failed to fetch".
+    throw new ApiError(0, "Cannot reach the server. Please try again in a moment.")
+  }
 
   if (res.status === 204) return undefined as T
 
@@ -78,12 +85,30 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   const data = isJson ? await res.json().catch(() => ({})) : await res.text()
 
   if (!res.ok) {
+    // A 401 on an authenticated call means the token is missing/expired/stale
+    // (e.g. the user was deleted, or the secret rotated). Self-heal: drop the
+    // token and bounce to login instead of leaving the app wedged.
+    if (res.status === 401 && auth) {
+      handleAuthExpiry()
+    }
     const message = (isJson && (data as { error?: string }).error) || res.statusText
     const code = isJson ? (data as { code?: string }).code : undefined
     throw new ApiError(res.status, message, code)
   }
 
   return data as T
+}
+
+// Clears the session and redirects to login. Guarded so it only fires once per
+// expiry and never during SSR.
+let redirectingToLogin = false
+function handleAuthExpiry(): void {
+  if (typeof window === "undefined") return
+  clearToken()
+  if (redirectingToLogin) return
+  if (window.location.pathname.startsWith("/auth/")) return
+  redirectingToLogin = true
+  window.location.href = "/auth/login"
 }
 
 // Download a file (report) as a Blob, with auth.
