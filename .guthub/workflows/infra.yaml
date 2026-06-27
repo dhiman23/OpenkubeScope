@@ -1,0 +1,50 @@
+---
+name: Infra Workflow
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+  permissions:
+    contents: read
+    id-token: write
+jobs:
+   terraform apply:
+   name: terrform apply
+   if: ${{ github.event.inputs.action == 'apply'}}
+   runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.7.6
+
+      - name: terraform init
+        run: terraform init
+      
+      - name: tf lint
+        run: |
+          curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+        
+      - name: initialize tflint
+        run: tflint --init
+      
+      - name: Run tflint
+        run: tflint
+
+      - name: check
+
+

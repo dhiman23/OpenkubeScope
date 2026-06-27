@@ -23,9 +23,6 @@ enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager
     ]
   }
 
- 
-
-
 
   # Ensure that IAM Role permissions are created before and deleted
   # after EKS Cluster handling. Otherwise, EKS will not be able to
@@ -58,6 +55,8 @@ resource "aws_iam_role" "cluster" {
     ]
   })
 }
+
+
 #role for the node group
 
 resource "aws_iam_role" "node_group" {
@@ -100,7 +99,13 @@ resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSWorkerNodePolicy" {
   role       = aws_iam_role.node_group.name
 }
 
-# node group for the EKS cluster
+#create an instance profile for the EKS node group
+resource "aws_iam_instance_profile" "eks_prod_instance_profile" {
+  name = "eks-prod-instance-profile"
+  role = aws_iam_role.node_group.name
+}
+
+# node group for the EKS cluster 
 resource "aws_eks_node_group" "eks_prod_node_group" {
   cluster_name    = aws_eks_cluster.eks_prod_cluster.name
   node_group_name = "myekscluster-prod-node-group"
@@ -116,7 +121,6 @@ resource "aws_eks_node_group" "eks_prod_node_group" {
     min_size     = 1
   }
 
-  instance_types = ["t3.medium"]
   capacity_type = "ON_DEMAND"
 
   depends_on = [
@@ -128,6 +132,53 @@ resource "aws_eks_node_group" "eks_prod_node_group" {
   tags = {
     Name        = "myekscluster-prod-node-group"
     Environment = "production"
+  }
+} 
+
+# Amazon SSM parameter to get the latest EKS optimized recommended AMI ID for the specified Kubernetes version and OS type. This parameter is used to ensure that the EKS node group uses the latest recommended AMI for optimal performance and security.
+
+data "aws_ssm_parameter" "eks_worker_image_id" {
+  name = "/aws/service/eks/optimized-ami/1.35/amazon-linux-2023/x86_64/standard/recommended/image_id"
+
+}
+
+#launch template for the EKS node group
+resource "aws_launch_template" "eks_prod_launch_template" {
+  name_prefix   = "myekscluster-prod-launch-template"
+  image_id      = data.aws_ssm_parameter.eks_worker_image_id.value
+  instance_type = "t3.medium"
+  key_name     = "us-1"
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.eks_prod_instance_profile.name
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name        = "myekscluster-prod-instance"
+      Environment = "production"
+    }
+  }
+
+  metadata_options {
+    http_tokens = "required"
+    http_endpoint = "enabled"
+  }
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size = 35
+      volume_type = "gp3"
+      delete_on_termination = true
+      encrypted = true
+    }
+
+  }
+  monitoring {
+    enabled = true
   }
 }
 
