@@ -22,29 +22,39 @@ jobs:
    terraform apply:
    name: terrform apply
    if: ${{ github.event.inputs.action == 'apply'}}
-   runs-on: ubuntu-latest
+   runs-on: ubuntu-latest 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.7.6
+      - name: setup OIDC connection
+        uses: aws-actions/configure-aws-credentials@v4
+        with: 
+          role-to-assume: ${{ IAM_ROLE }}
+          aws-region: us-east-1
+          audiance: sts.amazonaws.com
 
-      - name: terraform init
-        run: terraform init
+      - name: Verify AWS Connection
+        run: aws sts get-caller-identity
       
-      - name: tf lint
-        run: |
-          curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      # - name: Set up Terraform
+      #   uses: hashicorp/setup-terraform@v2
+      #   with:
+      #     terraform_version: 1.7.6
+
+      # - name: terraform init
+      #   run: terraform init
+      
+      # - name: tf lint
+      #   run: |
+      #     curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
         
-      - name: initialize tflint
-        run: tflint --init
+      # - name: initialize tflint
+      #   run: tflint --init
       
-      - name: Run tflint
-        run: tflint
+      # - name: Run tflint
+      #   run: tflint
 
-      - name: check
+      # - name: 
 
 
