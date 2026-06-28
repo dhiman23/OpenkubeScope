@@ -18,7 +18,7 @@ permissions:
   contents: read
   id-token: write
 jobs:
-  terraform_apply:
+  OIDC_Connection:
     name: terraform apply
     if: ${{ github.event.inputs.action == 'apply'}}
     runs-on: ubuntu-latest
@@ -33,25 +33,46 @@ jobs:
           audience: sts.amazonaws.com
       - name: Verify AWS Connection
         run: aws sts get-caller-identity
-
       
-      # - name: Set up Terraform
-      #   uses: hashicorp/setup-terraform@v2
-      #   with:
-      #     terraform_version: 1.7.6
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.7.6
 
-      # - name: terraform init
-      #   run: terraform init
+      - name: terraform init
+        run: terraform init
       
-      # - name: tf lint
-      #   run: |
-      #     curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      - name: tf lint
+        run: |
+          curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
         
-      # - name: initialize tflint
-      #   run: tflint --init
+      - name: initialize tflint
+        run: tflint --init
       
-      # - name: Run tflint
-      #   run: tflint
+      - name: Run tflint
+        run: tflint
      
-      # - name: 
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Test with Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: OpenkubeScope/infra
+          framework: terraform
+      - name: checkov output
+        run: checkov -d OpenkubeScope/infra --output json
+      
+      - name: creating infra 
+        run: terraform apply --auto-approve
+          
+  terraform_destory:
+    name: terraform_destory
+    if: ${{ github.event.inputs == 'destory '}}
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: destory infra
+        use
