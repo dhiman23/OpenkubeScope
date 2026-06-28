@@ -7,35 +7,33 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'Action to perform'
+        description: Action to perform
         required: true
-        default: 'plan'
+        default: plan
         type: choice
         options:
           - apply
           - destroy
-
-  permissions:
-    contents: read
-    id-token: write
+permissions:
+  contents: read
+  id-token: write
 jobs:
-   terraform apply:
-   name: terrform apply
-   if: ${{ github.event.inputs.action == 'apply'}}
-   runs-on: ubuntu-latest 
+  terraform_apply:
+    name: terraform apply
+    if: ${{ github.event.inputs.action == 'apply'}}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: setup OIDC connection
         uses: aws-actions/configure-aws-credentials@v4
-        with: 
-          role-to-assume: ${{ IAM_ROLE }}
+        with:
+          role-to-assume: ${{ secrets.IAM_ROLE }}
           aws-region: us-east-1
-          audiance: sts.amazonaws.com
-
+          audience: sts.amazonaws.com
       - name: Verify AWS Connection
         run: aws sts get-caller-identity
+
       
       # - name: Set up Terraform
       #   uses: hashicorp/setup-terraform@v2
@@ -54,7 +52,6 @@ jobs:
       
       # - name: Run tflint
       #   run: tflint
-
+     
       # - name: 
-
 
