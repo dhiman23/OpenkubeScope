@@ -106,4 +106,4 @@ jobs:
 
       - name: destroy infra
         working-directory: ./infra
-        run: terraform destory --auto-approve
+        run: terraform destroy --auto-approve
