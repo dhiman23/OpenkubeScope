@@ -89,6 +89,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps: 
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - name: destroy infra
         working-directory: ./infra
         run: terraform destory --auto-approve
