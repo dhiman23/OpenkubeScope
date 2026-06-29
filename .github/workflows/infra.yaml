@@ -40,9 +40,8 @@ jobs:
           terraform_version: 1.14.6
 
       - name: terraform init
-        run: |
-          cd /OpenkubeScope/infra
-          terraform init
+        working-directory: ./infra
+        run: terraform init
       
       - name: tf lint
         run: |
