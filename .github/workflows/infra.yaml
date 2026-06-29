@@ -91,7 +91,19 @@ jobs:
     steps: 
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
+      - name: setup OIDC connection
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.IAM_ROLE }}
+          aws-region: us-east-1
+          audience: sts.amazonaws.com
+      
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.14.6
+
       - name: destroy infra
         working-directory: ./infra
         run: terraform destory --auto-approve
