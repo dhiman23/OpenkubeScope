@@ -103,6 +103,10 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.14.6
+      
+      - name: terraform init
+        working-directory: ./infra
+        run: terraform init   
 
       - name: destroy infra
         working-directory: ./infra
