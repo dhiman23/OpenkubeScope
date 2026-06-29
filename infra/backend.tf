@@ -1,5 +1,4 @@
 terraform {
-    required_version = "~> 1.13.1"
     backend "s3" {
     
         bucket = "kubescope-bucket"
