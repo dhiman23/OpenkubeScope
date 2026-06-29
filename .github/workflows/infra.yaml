@@ -60,10 +60,12 @@ jobs:
         id: checkov
         uses: bridgecrewio/checkov-action@master
         with:
-          directory: OpenkubeScope/infra
+          directory: Kubescope-open/infra
           framework: terraform
       - name: checkov output
-        run: checkov -d OpenkubeScope/infra --output json
+        run: |
+          cd 
+          checkov -d OpenkubeScope/infra --output json
       
       - name: creating infra 
         run: terraform apply --auto-approve
@@ -73,6 +75,6 @@ jobs:
     if: ${{ github.event.inputs == 'destory '}}
     runs-on: ubuntu-latest
 
-    steps:
+    steps: 
       - name: destory infra
         run: terraform destory --auto-approve
