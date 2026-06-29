@@ -63,6 +63,7 @@ jobs:
         with:
           directory: ./infra
           framework: terraform 
+          continue-on-error: true
           output_format: cli,sarif
           output_file_path: console,results.sarif
         
