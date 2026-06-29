@@ -60,13 +60,8 @@ jobs:
         id: checkov
         uses: bridgecrewio/checkov-action@master
         with:
-          directory: Kubescope-open/infra
-          framework: terraform
-      - name: checkov output
-        run: |
-          cd 
-          checkov -d OpenkubeScope/infra --output json
-      
+          directory: /OpenkubeScope/tree/main/infra
+          framework: terraform 
       - name: creating infra 
         run: terraform apply --auto-approve
           
