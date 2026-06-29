@@ -61,7 +61,7 @@ jobs:
         id: checkov
         uses: bridgecrewio/checkov-action@master
         with:
-          directory: /infra
+          directory: ./infra
           framework: terraform 
           output_format: cli,sarif
           output_file_path: console,results.sarif
