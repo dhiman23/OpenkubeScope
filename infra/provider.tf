@@ -3,7 +3,14 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 6.0"
-      required_version = ">= 5.0"
+    
+    }
+    tls = {
+
+      source  = "hashicorp/tls"
+
+      version = "~> 4.0"
+
     }
   }
 
