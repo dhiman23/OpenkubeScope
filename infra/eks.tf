@@ -3,6 +3,7 @@
 resource "aws_eks_cluster" "eks_prod_cluster" {
   name = "myekscluster-prod"
 
+  
   access_config {
     authentication_mode = "API"
   }
@@ -21,6 +22,8 @@ enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager
       aws_subnet.prod-private-subnet-1.id,
       aws_subnet.prod-private-subnet-2.id
     ]
+    endpoint_private_access = true
+    endpoint_public_access = false
   }
 
 

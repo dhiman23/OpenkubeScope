@@ -31,30 +31,70 @@ resource "aws_iam_policy" "karpenter_irsa_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ec2:RunInstances",
-          "ec2:DescribeInstances",
-          "ec2:TerminateInstances",
-          "iam:PassRole",
-            "ec2:DescribeLaunchTemplates",
-            "ec2:DescribeSecurityGroups",
-            "ec2:DescribeSubnets",
-            "ec2:DescribeVpcs",
-            "ec2:DescribeImages",
-            "ec2:DescribeInstanceTypes",
-            "ec2:CreateFleet",
-            "ec2:CreateLaunchTemplate",
-            "ec2:DeleteLaunchTemplate",
-            "ec2:DescribeAvailabilityZones",
-            "pricing:GetProducts",
-            "ssm:GetParameter",
-        ]
-        Resource = "*"
-      },
-    ]
-  })
+
+    # EC2 permissions
+
+    {
+
+      Effect = "Allow"
+
+      Action = [
+
+        "ec2:RunInstances",
+
+        "ec2:DescribeInstances",
+
+        "ec2:TerminateInstances",
+
+        "ec2:DescribeLaunchTemplates",
+
+        "ec2:DescribeSecurityGroups",
+
+        "ec2:DescribeSubnets",
+
+        "ec2:DescribeVpcs",
+
+        "ec2:DescribeImages",
+
+        "ec2:DescribeInstanceTypes",
+
+        "ec2:CreateFleet",
+
+        "ec2:CreateLaunchTemplate",
+
+        "ec2:DeleteLaunchTemplate",
+
+        "ec2:DescribeAvailabilityZones",
+
+        "pricing:GetProducts",
+
+        "ssm:GetParameter"
+
+      ]
+
+      Resource = "*"
+
+    },
+
+    # PassRole permission
+
+    {
+
+      Effect = "Allow"
+
+      Action = [
+
+        "iam:PassRole"
+
+      ]
+
+      Resource = aws_iam_role.node_group.arn
+
+    }
+
+  ]
+
+})
 }
 
 #attach the IAM policy to the IAM role for the Karpenter service account
