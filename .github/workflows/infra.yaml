@@ -85,7 +85,7 @@ jobs:
           
   terraform_destory:
     name: terraform_destory
-    if: ${{ github.event.inputs.action == 'destory '}}
+    if: ${{ github.event.inputs.action == 'destroy'}}
     runs-on: ubuntu-latest
 
     steps: 
