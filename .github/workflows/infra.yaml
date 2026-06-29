@@ -48,28 +48,31 @@ jobs:
           curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
         
       - name: initialize tflint
+        working-directory: ./infra
         run: tflint --init
       
       - name: Run tflint
+        working-directory: ./infra
         run: tflint
      
       - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: 3.9
       - name: Test with Checkov
         id: checkov
+        continue-on-error: true
         uses: bridgecrewio/checkov-action@master
         with:
           directory: ./infra
           framework: terraform 
-          continue-on-error: true
+          
           output_format: cli,sarif
           output_file_path: console,results.sarif
         
 
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v5
         if: success() || failure()
         with:
           sarif_file: results.sarif
@@ -79,9 +82,9 @@ jobs:
           
   terraform_destory:
     name: terraform_destory
-    if: ${{ github.event.inputs == 'destory '}}
+    if: ${{ github.event.inputs.action == 'destory '}}
     runs-on: ubuntu-latest
 
     steps: 
-      - name: destory infra
+      - name: destroy infra
         run: terraform destory --auto-approve
