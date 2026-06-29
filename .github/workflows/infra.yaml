@@ -78,6 +78,7 @@ jobs:
           sarif_file: results.sarif
   
       - name: creating infra 
+        working-directory: ./infra
         run: terraform apply --auto-approve
           
   terraform_destory:
@@ -87,4 +88,5 @@ jobs:
 
     steps: 
       - name: destroy infra
+        working-directory: ./infra
         run: terraform destory --auto-approve
