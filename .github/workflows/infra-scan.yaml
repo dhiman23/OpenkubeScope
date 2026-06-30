@@ -1,0 +1,59 @@
+---
+name: Infra Code Scanning
+on:
+  push:
+    branches:
+      - infra
+
+permissions:
+  security-events: write
+jobs:
+  terraform_workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.14.6
+
+      - name: terraform init
+        working-directory: ./infra
+        run: terraform init
+      
+      - name: tf lint
+        run: |
+          curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+        
+      - name: initialize tflint
+        working-directory: ./infra
+        run: tflint --init
+      
+      - name: Run tflint
+        continue-on-error: true
+        working-directory: ./infra
+        run: tflint
+     
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.9
+      - name: Test with Checkov
+        id: checkov
+        continue-on-error: true
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ./infra
+          framework: terraform 
+          
+          output_format: cli,sarif
+          output_file_path: console,results.sarif
+        
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v4
+        if: success() || failure()
+        with:
+          sarif_file: results.sarif
