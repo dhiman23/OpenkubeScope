@@ -5,7 +5,9 @@ on:
     branches:
       - infra
     
+
 permissions:
+  security-events: write
   contents: read
   id-token: write
 jobs:
