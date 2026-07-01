@@ -5,9 +5,7 @@ on:
     branches:
       - infra
     
-
 permissions:
-  security-events: write
   contents: read
   id-token: write
 jobs:
@@ -15,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.14.6
       - name: setup OIDC connection
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.IAM_ROLE }}
           aws-region: us-east-1
