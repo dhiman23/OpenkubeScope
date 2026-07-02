@@ -1,0 +1,65 @@
+---
+name: Drift Detection automation
+on:
+  schedule:
+    - cron: '0 6 * * *'
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+jobs:
+  terraform_workflow:
+    name: infra drift detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: setup OIDC connection
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.IAM_ROLE }}
+          aws-region: us-east-1
+          audience: sts.amazonaws.com
+      - name: Verify AWS Connection
+        run: aws sts get-caller-identity
+      
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.14.6
+
+      - name: terraform fmt
+        working-directory: ./infra
+        run: terraform fmt -check -recursive
+
+      - name: installing JQ
+        run: sudo apt-get install jq -y
+
+      - name: terraform init
+        working-directory: ./infra
+        run: terraform init
+     
+  
+      - name: validating drift detection
+        working-directory: ./infra
+        run: |
+         terraform plan -detailed-exitcode -out=tfplan.binary
+         EXIT_CODE=$?
+         if [ $EXIT_CODE -eq 0 ] then;
+            echo "No Drift Detected"
+            exit 0
+
+         elif [ $EXIT_CODE -eq 2 ] then;
+            echo "Drift Detected"
+            terrform show -json tfplan.binary | jq -r '.resource_changes[].address' > drifted_resources.txt
+            echo "Drifted resources:"
+            cat drifted_resources.txt
+            exit 2
+         else [ $EXIT_CODE -eq 1 ] then;
+            echo "Error in terraform plan"
+            exit 1
+         fi 
+
+      
+          
+  
