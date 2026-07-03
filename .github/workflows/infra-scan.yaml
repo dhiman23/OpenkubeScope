@@ -66,3 +66,23 @@ jobs:
         if: success() || failure()
         with:
           sarif_file: results.sarif
+
+      - name: slack notification
+        if: success() || failure()
+        uses: slackapi/slack-github-action@v2       
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "#0256ff",
+                  "title": "scan done",
+                  "text": "scan detected in the infrastructure. Please check the drifted resources.",
+  
+                  ]
+                    
+                }
+              ]
+            } 
