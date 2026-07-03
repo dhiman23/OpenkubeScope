@@ -1,15 +1,24 @@
 ---
 name: Drift Detection automation
 on:
-  schedule:
-    - cron: '*/7 * * * *'
+    workflow_dispatch:
+     inputs:
+      action:
+        description: Action to perform
+        required: true
+        default: plan
+        type: choice
+        options:
+          - drift-scan
 permissions:
   contents: read
   id-token: write
   security-events: write
 jobs:
+ 
   terraform_workflow:
     name: infra drift detection
+    if: ${{ github.event.inputs.action == 'drift-scan'}}
     runs-on: ubuntu-latest
     env: 
       slack_weebhook: ${{ secrets.SLACK_TOKEN}}
