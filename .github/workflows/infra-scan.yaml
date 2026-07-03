@@ -80,8 +80,6 @@ jobs:
                   "color": "#0256ff",
                   "title": "scan done",
                   "text": "scan detected in the infrastructure. Please check the drifted resources.",
-  
-                  ]
                     
                 }
               ]
