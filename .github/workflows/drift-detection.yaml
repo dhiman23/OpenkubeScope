@@ -21,8 +21,6 @@ jobs:
     name: infra drift detection
     if: ${{ github.event.inputs.action == 'drift-scan'}}
     runs-on: ubuntu-latest
-    env: 
-      slack_webhook: ${{ secrets.SLACK_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,7 +50,6 @@ jobs:
         working-directory: ./infra
         run: terraform init
        
-  
       - name: validating drift detection
         id: drift-detection
         working-directory: ./infra
@@ -62,13 +59,9 @@ jobs:
          terraform plan -detailed-exitcode -no-color -out=tfplan.binary > drift_plan.log 2>&1
          exit_code=$?
          echo "exitcode=$exit_code" >> $GITHUB_OUTPUT
-         cat drift_plan.log         
+         cat drift_plan.log        
          exit 0
        #This is for the puprpose of the drift detection of the IAC 
-      - name: debug
-        run: |
-          echo "Output: '${{ steps.drift-detection.outputs.exitcode }}'"
-
       - name: drift analysis
         if: steps.drift-detection.outputs.exitcode == '2'
         id: drift-analysis
@@ -91,19 +84,19 @@ jobs:
          
       - name: slack notification
         if: steps.drift-detection.outputs.exitcode == '2'
-        uses: slackapi/slack-github-action@v1.23.0
+        uses: slackapi/slack-github-action@v2       
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: incoming-webhook
           payload: |
             {
-              "channel": "drift-detection",
               "attachments": [
                 {
                   "color": "#ff0000",
                   "title": "Drift Detection Alert",
                   "text": "Drift detected in the infrastructure. Please check the drifted resources.",
                   "fields": [
-                    {
-                      "title": "Drifted Resources",
+                    {                    
                       "value": "${{ steps.drift-analysis.outputs.resources }}",
                       "short": false
                     }
