@@ -39,6 +39,8 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.14.6
+          terraform_wrapper: false
+
 
       - name: terraform fmt
         working-directory: ./infra
@@ -66,7 +68,7 @@ jobs:
       - name: debug
         run: |
           echo "Output: '${{ steps.drift-detection.outputs.exitcode }}'"
-          
+
       - name: drift analysis
         if: steps.drift-detection.outputs.exitcode == '2'
         id: drift-analysis
