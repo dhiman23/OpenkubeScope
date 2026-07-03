@@ -32,74 +32,74 @@ resource "aws_iam_policy" "karpenter_irsa_policy" {
     Version = "2012-10-17"
     Statement = [
 
-    # EC2 permissions
+      # EC2 permissions
 
-    {
+      {
 
-      Effect = "Allow"
+        Effect = "Allow"
 
-      Action = [
+        Action = [
 
-        "ec2:RunInstances",
+          "ec2:RunInstances",
 
-        "ec2:DescribeInstances",
+          "ec2:DescribeInstances",
 
-        "ec2:TerminateInstances",
+          "ec2:TerminateInstances",
 
-        "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeLaunchTemplates",
 
-        "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSecurityGroups",
 
-        "ec2:DescribeSubnets",
+          "ec2:DescribeSubnets",
 
-        "ec2:DescribeVpcs",
+          "ec2:DescribeVpcs",
 
-        "ec2:DescribeImages",
+          "ec2:DescribeImages",
 
-        "ec2:DescribeInstanceTypes",
+          "ec2:DescribeInstanceTypes",
 
-        "ec2:CreateFleet",
+          "ec2:CreateFleet",
 
-        "ec2:CreateLaunchTemplate",
+          "ec2:CreateLaunchTemplate",
 
-        "ec2:DeleteLaunchTemplate",
+          "ec2:DeleteLaunchTemplate",
 
-        "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeAvailabilityZones",
 
-        "pricing:GetProducts",
+          "pricing:GetProducts",
 
-        "ssm:GetParameter"
+          "ssm:GetParameter"
 
-      ]
+        ]
 
-      Resource = "*"
+        Resource = "*"
 
-    },
+      },
 
-    # PassRole permission
+      # PassRole permission
 
-    {
+      {
 
-      Effect = "Allow"
+        Effect = "Allow"
 
-      Action = [
+        Action = [
 
-        "iam:PassRole"
+          "iam:PassRole"
 
-      ]
+        ]
 
-      Resource = aws_iam_role.node_group.arn
+        Resource = aws_iam_role.node_group.arn
 
-    }
+      }
 
-  ]
+    ]
 
-})
+  })
 }
 
 #attach the IAM policy to the IAM role for the Karpenter service account
 
 resource "aws_iam_role_policy_attachment" "karpenter_irsa_role_policy_attachment" {
   policy_arn = aws_iam_policy.karpenter_irsa_policy.arn
-   role       = aws_iam_role.karpenter_irsa_role.name
+  role       = aws_iam_role.karpenter_irsa_role.name
 }

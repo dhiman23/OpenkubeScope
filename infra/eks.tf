@@ -3,27 +3,27 @@
 resource "aws_eks_cluster" "eks_prod_cluster" {
   name = "myekscluster-prod"
 
-  
+
   access_config {
     authentication_mode = "API"
   }
 
   role_arn = aws_iam_role.cluster.arn
 
-  version  = "1.35"
+  version = "1.35"
 
-enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   vpc_config {
     subnet_ids = [
-      
+
       aws_subnet.prod-public-subnet-1.id,
       aws_subnet.prod-public-subnet-2.id,
       aws_subnet.prod-private-subnet-1.id,
       aws_subnet.prod-private-subnet-2.id
     ]
     endpoint_private_access = true
-    endpoint_public_access = false
+    endpoint_public_access  = false
   }
 
 
@@ -113,10 +113,10 @@ resource "aws_eks_node_group" "eks_prod_node_group" {
   cluster_name    = aws_eks_cluster.eks_prod_cluster.name
   node_group_name = "myekscluster-prod-node-group"
   node_role_arn   = aws_iam_role.node_group.arn
-  subnet_ids      = [
+  subnet_ids = [
     aws_subnet.prod-private-subnet-1.id,
     aws_subnet.prod-private-subnet-2.id
-  ] 
+  ]
 
   scaling_config {
     desired_size = 2
@@ -136,7 +136,7 @@ resource "aws_eks_node_group" "eks_prod_node_group" {
     Name        = "myekscluster-prod-node-group"
     Environment = "production"
   }
-} 
+}
 
 # Amazon SSM parameter to get the latest EKS optimized recommended AMI ID for the specified Kubernetes version and OS type. This parameter is used to ensure that the EKS node group uses the latest recommended AMI for optimal performance and security.
 
@@ -150,7 +150,7 @@ resource "aws_launch_template" "eks_prod_launch_template" {
   name_prefix   = "myekscluster-prod-launch-template"
   image_id      = data.aws_ssm_parameter.eks_worker_image_id.value
   instance_type = "t3.medium"
-  key_name     = "us-1"
+  key_name      = "us-1"
 
   iam_instance_profile {
     name = aws_iam_instance_profile.eks_prod_instance_profile.name
@@ -166,17 +166,17 @@ resource "aws_launch_template" "eks_prod_launch_template" {
   }
 
   metadata_options {
-    http_tokens = "required"
+    http_tokens   = "required"
     http_endpoint = "enabled"
   }
 
   block_device_mappings {
     device_name = "/dev/xvda"
     ebs {
-      volume_size = 35
-      volume_type = "gp3"
+      volume_size           = 35
+      volume_type           = "gp3"
       delete_on_termination = true
-      encrypted = true
+      encrypted             = true
     }
 
   }
