@@ -14,6 +14,7 @@ permissions:
   contents: read
   id-token: write
   security-events: write
+
 jobs:
  
   terraform_workflow:
@@ -21,7 +22,7 @@ jobs:
     if: ${{ github.event.inputs.action == 'drift-scan'}}
     runs-on: ubuntu-latest
     env: 
-      slack_webhook: ${{ secrets.SLACK_TOKEN}}
+      slack_webhook: ${{ secrets.SLACK_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,7 +56,7 @@ jobs:
         working-directory: ./infra
         run: |
          set +e
-         terraform plan -detailed-exitcode --no-color -out=tfplan.binary > drift_plan.log 2>&1
+         terraform plan -detailed-exitcode -no-color -out=tfplan.binary > drift_plan.log 2>&1
          exit_code=$?
          echo "exitcode=$exit_code" >> $GITHUB_OUTPUT
          cat drift_plan.log
