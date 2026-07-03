@@ -11,6 +11,8 @@ jobs:
   terraform_workflow:
     name: infra drift detection
     runs-on: ubuntu-latest
+    env: 
+      slack_weebhook: ${{ secrets.SLACK_TOKEN}}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,6 +60,31 @@ jobs:
             echo "Error in terraform plan"
             exit 1
          fi 
+      - name: slack notification
+        if: failure()
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "channel: "drift-detection",
+              "attachments": [
+                {
+                  "color": "#ff0000",
+                  "title": "Drift Detection Alert",
+                  "text": "Drift detected in the infrastructure. Please check the drifted resources.",
+                  "fields": [
+                    {
+                      "title": "Drifted Resources",
+                      "value": "$(cat drifted_resources.txt)",
+                      "short": false
+                      
+                      }
+                  ]
+                    
+                }
+              ]
+            } 
+              
 
       
           
