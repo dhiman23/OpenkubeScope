@@ -21,7 +21,7 @@ jobs:
     if: ${{ github.event.inputs.action == 'drift-scan'}}
     runs-on: ubuntu-latest
     env: 
-      slack_weebhook: ${{ secrets.SLACK_TOKEN}}
+      slack_webhook: ${{ secrets.SLACK_TOKEN}}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,31 +51,43 @@ jobs:
        
   
       - name: validating drift detection
+        id: drift-detection
         working-directory: ./infra
         run: |
-         terraform plan -detailed-exitcode -out=tfplan.binary
-         EXIT_CODE=$?
-         if [ $EXIT_CODE -eq 0 ] then;
-            echo "No Drift Detected"
-            exit 0
+         set +e
+         terraform plan -detailed-exitcode --no-color -out=tfplan.binary > drift_plan.log 2>&1
+         exit_code=$?
+         echo "exitcode=$exit_code" >> $GITHUB_OUTPUT
+         cat drift_plan.log
+         exit 0
+       #This is for the puprpose of the drift detection of the IAC 
+      - name: drift analysis
+        if: steps.drift-detection.outputs.exitcode == '2'
+        id: drift-analysis
+        working-directory: ./infra
+        run: |
+         echo "Drift detected in the infrastructure. Please check the drifted resources."
+         terraform show -json tfplan.binary | jq -r '.resource_changes[].address' > drifted_resources.txt
+         echo "resources<<EOF" >> $GITHUB_OUTPUT
+         cat drifted_resources.txt  >> $GITHUB_OUTPUT
+         echo "EOF" >> $GITHUB_OUTPUT
+         echo "##Drift detection summary" >> $GITHUB_STEP_SUMMARY
+         cat drifted_resources.txt >> $GITHUB_STEP_SUMMARY
 
-         elif [ $EXIT_CODE -eq 2 ] then;
-            echo "Drift Detected"
-            terrform show -json tfplan.binary | jq -r '.resource_changes[].address' > drifted_resources.txt
-            echo "Drifted resources:"
-            cat drifted_resources.txt
-            exit 2
-         else [ $EXIT_CODE -eq 1 ] then;
-            echo "Error in terraform plan"
-            exit 1
-         fi 
+      - name: terraform plan issue 
+        if: steps.drift-detection.outputs.exitcode == '1'
+        working-directory: ./infra
+        run: |
+         echo "Terraform plan failed. Please check the plan output for errors."
+         cat drift_plan.log
+         
       - name: slack notification
-        if: failure()
+        if: steps.drift-detection.outputs.exitcode == '2'
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {
-              "channel: "drift-detection",
+              "channel": "drift-detection",
               "attachments": [
                 {
                   "color": "#ff0000",
@@ -84,17 +96,26 @@ jobs:
                   "fields": [
                     {
                       "title": "Drifted Resources",
-                      "value": "$(cat drifted_resources.txt)",
+                      "value": "${{ steps.drift-analysis.outputs.resources }}",
                       "short": false
-                      
-                      }
+                    }
                   ]
                     
                 }
               ]
             } 
-              
+      - name: upload drift plan log
+        if: steps.drift-detection.outputs.exitcode == '2'
+        uses: actions/upload-artifact@v3
+        with: 
+          name: drift_artifcats
+          path: ./infra/drift_plan.log
+      - name: upload drift resources
+        if: steps.drift-detection.outputs.exitcode == '2'
+        uses: actions/upload-artifact@v3
+        with:
+          name: drifted_resources
+          path: ./infra/drifted_resources.txt
 
-      
           
-  
+
