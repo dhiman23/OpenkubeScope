@@ -106,13 +106,13 @@ jobs:
             } 
       - name: upload drift plan log
         if: steps.drift-detection.outputs.exitcode == '2'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with: 
           name: drift_artifcats
           path: ./infra/drift_plan.log
       - name: upload drift resources
         if: steps.drift-detection.outputs.exitcode == '2'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with:
           name: drifted_resources
           path: ./infra/drifted_resources.txt
