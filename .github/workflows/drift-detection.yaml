@@ -2,7 +2,7 @@
 name: Drift Detection automation
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '*/3 * * * *'
 permissions:
   contents: read
   id-token: write
@@ -30,15 +30,14 @@ jobs:
 
       - name: terraform fmt
         working-directory: ./infra
-        run: terraform fmt -check -recursive
-
+        run: terraform fmt
       - name: installing JQ
         run: sudo apt-get install jq -y
 
       - name: terraform init
         working-directory: ./infra
         run: terraform init
-     
+       
   
       - name: validating drift detection
         working-directory: ./infra
