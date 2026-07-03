@@ -56,13 +56,17 @@ jobs:
         working-directory: ./infra
         run: |
          set +e
+         set -x
          terraform plan -detailed-exitcode -no-color -out=tfplan.binary > drift_plan.log 2>&1
          exit_code=$?
          echo "exitcode=$exit_code" >> $GITHUB_OUTPUT
-         echo "Exit code: $exit_code"
-         echo "error code is: ${{ steps.drift-detection.outputs.exitcode}}"
+         cat drift_plan.log         
          exit 0
        #This is for the puprpose of the drift detection of the IAC 
+      - name: debug
+        run: |
+          echo "Output: '${{ steps.drift-detection.outputs.exitcode }}'"
+          
       - name: drift analysis
         if: steps.drift-detection.outputs.exitcode == '2'
         id: drift-analysis
