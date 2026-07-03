@@ -59,7 +59,8 @@ jobs:
          terraform plan -detailed-exitcode -no-color -out=tfplan.binary > drift_plan.log 2>&1
          exit_code=$?
          echo "exitcode=$exit_code" >> $GITHUB_OUTPUT
-         cat drift_plan.log
+         echo "Exit code: $exit_code"
+         echo "error code is: ${{ steps.drift-detection.outputs.exitcode}}"
          exit 0
        #This is for the puprpose of the drift detection of the IAC 
       - name: drift analysis
