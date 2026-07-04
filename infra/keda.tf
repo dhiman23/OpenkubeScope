@@ -45,7 +45,7 @@ resource "aws_iam_policy" "keda_irsa_policy" {
 
       ]
 
-      Resource = aws_sqs_queue.keda_sqs_queue.arn
+      Resource = aws_sqs_queue.rbac_scan_queue.arn
 
     },
 
