@@ -92,6 +92,10 @@ export interface Scan {
   riskCounts: ScanRiskCounts
   dataset: ScanDataset
   isSummaryMode?: boolean // Large scan indicator
+  // Async (queued) scans are "pending" until the scanner worker finishes;
+  // sync-path scans are always "completed".
+  status?: "pending" | "completed" | "failed"
+  errorMessage?: string | null
 }
 
 // Resolved binding for internal use
@@ -937,6 +941,7 @@ export async function createScanFromFile(file: File): Promise<Scan> {
 import { getOrCreateActiveWorkspaceId } from "./workspace-manager"
 import {
   uploadScan as uploadScanToApi,
+  waitForScan,
   loadScans as loadScansFromDB,
   loadScansMeta as loadScansMetaFromDB,
   getActiveScanId as getActiveScanIdFromDB,
@@ -945,12 +950,22 @@ import {
   deleteScan as deleteScanFromDB
 } from "./scan-storage"
 
-// Upload a snapshot file: core-api parses + persists it server-side and returns
-// the resulting Scan. Replaces the old client-side parse + saveScans path.
+// Upload a snapshot file: core-api persists it server-side and returns the
+// resulting Scan. On the async (queued) path the upload returns a "pending"
+// scan; poll until the scanner worker finishes so callers always get a
+// terminal scan back. A failed scan surfaces as a thrown Error.
 export async function uploadScanFile(file: File, workspaceId?: string): Promise<Scan | null> {
   const wsId = workspaceId || await getOrCreateActiveWorkspaceId()
   if (!wsId) return null
-  return await uploadScanToApi(wsId, file)
+
+  let scan = await uploadScanToApi(wsId, file)
+  if (scan.status === "pending") {
+    scan = await waitForScan(wsId, scan.id)
+  }
+  if (scan.status === "failed") {
+    throw new Error(scan.errorMessage || "Scan failed while processing the snapshot")
+  }
+  return scan
 }
 
 export async function loadScans(workspaceId?: string): Promise<Scan[]> {

@@ -7,8 +7,9 @@ import { HealthImplementation } from "grpc-health-check"
 
 import { RbacScannerServiceService, type RbacScannerServiceServer } from "./generated/scanner"
 import { createScanFromBuffer } from "./lib/rbac-engine"
-import { deleteScan, getScan, listLatestScansByCluster, listScans, saveScan } from "./lib/scan-repository"
+import { createPendingScan, deleteScan, getScan, listLatestScansByCluster, listScans, saveScan } from "./lib/scan-repository"
 import { scanToProto } from "./lib/proto-mapper"
+import { startSqsConsumer, stopSqsConsumer } from "./lib/sqs-consumer"
 
 const SERVICE_NAME = "kubescope.scanner.v1.RbacScannerService"
 
@@ -24,6 +25,24 @@ const handlers: RbacScannerServiceServer = {
       const scan = await createScanFromBuffer(Buffer.from(fileContent), fileName)
       const saved = await saveScan(workspaceId, scan)
       callback(null, { scan: scanToProto(workspaceId, saved) })
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: toMessage(err) })
+    }
+  },
+
+  // Async intake: persist the raw snapshot + a 'pending' row and return the
+  // scan id immediately. core-api then publishes {scanId, workspaceId} to the
+  // rbac_scan_queue; the SQS consumer runs the engine and completes the row.
+  async submitScan(call, callback) {
+    try {
+      const { workspaceId, fileName, fileContent } = call.request
+      if (!workspaceId || !fileName || !fileContent?.length) {
+        callback({ code: grpc.status.INVALID_ARGUMENT, message: "workspace_id, file_name, and file_content are required" })
+        return
+      }
+
+      const scanId = await createPendingScan(workspaceId, fileName, Buffer.from(fileContent))
+      callback(null, { scanId })
     } catch (err) {
       callback({ code: grpc.status.INTERNAL, message: toMessage(err) })
     }
@@ -114,12 +133,16 @@ function main() {
       process.exit(1)
     }
     console.log(`rbac-scanner-service listening on :${boundPort}`)
+    startSqsConsumer()
   })
 
   const shutdown = () => {
     console.log("rbac-scanner-service shutting down")
     health.setStatus(SERVICE_NAME, "NOT_SERVING")
     server.tryShutdown(async () => {
+      // Waits for the in-flight scan job (if any) to finish — the pod's
+      // terminationGracePeriod must cover one scan plus the 20s long-poll.
+      await stopSqsConsumer()
       await shutdownTelemetry()
       process.exit(0)
     })

@@ -83,6 +83,8 @@ export interface ScanRiskCounts {
   low: number
 }
 
+export type ScanStatusStr = "pending" | "completed" | "failed"
+
 export interface Scan {
   id: string
   fileName: string
@@ -92,6 +94,10 @@ export interface Scan {
   riskCounts: ScanRiskCounts
   dataset: ScanDataset
   isSummaryMode?: boolean
+  // Absent on engine-produced scans (sync path); set when read from the DB,
+  // where async (SQS) rows can be pending/failed.
+  status?: ScanStatusStr
+  errorMessage?: string | null
 }
 
 interface ResolvedBinding {

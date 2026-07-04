@@ -765,9 +765,8 @@ export default function ReportsPage() {
       if (!workspaceId) return
 
       try {
-        // Server-side generation: completes inline (sync path) or is queued
-        // for the report worker (SQS path) — the poll effect above tracks it.
-        const { status } = await generateReport(workspaceId, {
+        // Generate server-side (create + render + persist in one call).
+        await generateReport(workspaceId, {
           report_name: params.reportName,
           report_type: params.reportType as Report["report_type"],
           format: params.format as Report["format"],
@@ -776,11 +775,10 @@ export default function ReportsPage() {
 
         await fetchReports()
 
-        toast(
-          status === "generating"
-            ? { title: "Report queued", description: `"${params.reportName}" is being generated.` }
-            : { title: "Report generated", description: `"${params.reportName}" is ready for download.` },
-        )
+        toast({
+          title: "Report generated",
+          description: `"${params.reportName}" is ready for download.`,
+        })
       } catch (err) {
         console.error("Failed to generate report:", err)
         // Refresh to show the failed status from DB
@@ -893,7 +891,7 @@ export default function ReportsPage() {
     async (report: Report) => {
       if (!workspaceId) return
       try {
-        const { status } = await generateReport(workspaceId, {
+        await generateReport(workspaceId, {
           report_name: report.report_name,
           report_type: report.report_type,
           format: report.format,
@@ -902,11 +900,10 @@ export default function ReportsPage() {
         })
         await fetchReports()
 
-        toast(
-          status === "generating"
-            ? { title: "Report queued", description: `"${report.report_name}" is being regenerated.` }
-            : { title: "Report regenerated", description: `"${report.report_name}" is ready for download.` },
-        )
+        toast({
+          title: "Report regenerated",
+          description: `"${report.report_name}" is ready for download.`,
+        })
       } catch (err) {
         console.error("Failed to regenerate report:", err)
         await fetchReports()

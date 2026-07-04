@@ -10,13 +10,11 @@ import "scanner.proto";
 // it calls RbacScannerService.ListScansByCluster (see scanner.proto) to get
 // scan data, since rbac-scanner-service owns that schema.
 //
-// Trigger mechanism (core-api -> report-service): async via AWS SQS + KEDA.
-// core-api calls CreateReport (fast, inserts the row in 'generating' state so
-// the frontend sees it immediately), then enqueues a job message on SQS.
-// report-service consumes the queue and runs the heavy generation; KEDA
-// scales report-service replicas on queue depth. GenerateReport remains as
-// the synchronous fallback used when SQS_QUEUE_URL is not configured
-// (local dev without AWS) and by the scheduled-report runner in-process.
+// Trigger mechanism (core-api -> report-service): synchronous gRPC call
+// (GenerateReport), matching the monolith's inline generateReport() behavior.
+// A dedicated report-generation SQS queue + KEDA ScaledObject is planned for
+// a later iteration (after the scan-queue milestone is verified end-to-end);
+// the current event-driven flow covers scans only (see scanner.proto).
 
 enum ReportType {
   REPORT_TYPE_UNSPECIFIED = 0;
@@ -157,22 +155,6 @@ message GenerateReportResponse {
   bytes file_content = 4;
   string file_size = 5;
   string error_message = 6; // set when status == FAILED
-}
-
-// Inserts the report row in 'generating' state and returns its id without
-// doing any generation work. Used by core-api on the async (SQS) path so the
-// report is visible in ListReports while the job waits in the queue.
-message CreateReportRequest {
-  string workspace_id = 1;
-  string report_name = 2;
-  ReportType report_type = 3;
-  ReportFormat format = 4;
-  repeated string clusters = 5;
-  repeated string scan_ids = 6;
-}
-
-message CreateReportResponse {
-  string report_id = 1;
 }
 
 message GetReportRequest {
@@ -318,7 +300,6 @@ message RunDueScheduledReportsResponse {
 
 service ReportService {
   rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse);
-  rpc CreateReport(CreateReportRequest) returns (CreateReportResponse);
   rpc GetReport(GetReportRequest) returns (GetReportResponse);
   rpc ListReports(ListReportsRequest) returns (ListReportsResponse);
   rpc DeleteReport(DeleteReportRequest) returns (DeleteReportResponse);

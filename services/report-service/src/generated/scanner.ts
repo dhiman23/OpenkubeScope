@@ -246,6 +246,56 @@ export function findingCategoryToJSON(object: FindingCategory): string {
   }
 }
 
+/**
+ * Lifecycle of a scan row. Synchronous ScanSnapshot only ever produces
+ * COMPLETED rows; the async path (SubmitScan + SQS consumer) moves a row
+ * PENDING -> COMPLETED | FAILED.
+ */
+export enum ScanStatus {
+  SCAN_STATUS_UNSPECIFIED = 0,
+  PENDING = 1,
+  COMPLETED = 2,
+  FAILED = 3,
+  UNRECOGNIZED = -1,
+}
+
+export function scanStatusFromJSON(object: any): ScanStatus {
+  switch (object) {
+    case 0:
+    case "SCAN_STATUS_UNSPECIFIED":
+      return ScanStatus.SCAN_STATUS_UNSPECIFIED;
+    case 1:
+    case "PENDING":
+      return ScanStatus.PENDING;
+    case 2:
+    case "COMPLETED":
+      return ScanStatus.COMPLETED;
+    case 3:
+    case "FAILED":
+      return ScanStatus.FAILED;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ScanStatus.UNRECOGNIZED;
+  }
+}
+
+export function scanStatusToJSON(object: ScanStatus): string {
+  switch (object) {
+    case ScanStatus.SCAN_STATUS_UNSPECIFIED:
+      return "SCAN_STATUS_UNSPECIFIED";
+    case ScanStatus.PENDING:
+      return "PENDING";
+    case ScanStatus.COMPLETED:
+      return "COMPLETED";
+    case ScanStatus.FAILED:
+      return "FAILED";
+    case ScanStatus.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface RBACSubject {
   name: string;
   kind: SubjectKind;
@@ -346,6 +396,9 @@ export interface Scan {
   dataset?: ScanDataset | undefined;
   isSummaryMode: boolean;
   workspaceId: string;
+  status: ScanStatus;
+  /** set when status == FAILED */
+  errorMessage: string;
 }
 
 /**
@@ -362,6 +415,26 @@ export interface ScanSnapshotRequest {
 
 export interface ScanSnapshotResponse {
   scan?: Scan | undefined;
+}
+
+/**
+ * Async intake for the event-driven flow (core-api -> SQS -> this service).
+ * Persists the raw snapshot bytes and a scan row in PENDING state, without
+ * running the findings engine, and returns the new scan id. core-api then
+ * publishes {scan_id, workspace_id} to the rbac_scan_queue; the SQS consumer
+ * in this service picks it up, runs the engine, and completes the row. The
+ * raw bytes stay in this service's own schema so the SQS message stays tiny
+ * (well under the 256KB SQS limit — snapshots can be up to 32MB).
+ */
+export interface SubmitScanRequest {
+  workspaceId: string;
+  fileName: string;
+  fileContent: Buffer;
+  fileSize: number;
+}
+
+export interface SubmitScanResponse {
+  scanId: string;
 }
 
 export interface GetScanRequest {
@@ -1827,6 +1900,8 @@ function createBaseScan(): Scan {
     dataset: undefined,
     isSummaryMode: false,
     workspaceId: "",
+    status: 0,
+    errorMessage: "",
   };
 }
 
@@ -1858,6 +1933,12 @@ export const Scan: MessageFns<Scan> = {
     }
     if (message.workspaceId !== "") {
       writer.uint32(74).string(message.workspaceId);
+    }
+    if (message.status !== 0) {
+      writer.uint32(80).int32(message.status);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(90).string(message.errorMessage);
     }
     return writer;
   },
@@ -1941,6 +2022,22 @@ export const Scan: MessageFns<Scan> = {
           message.workspaceId = reader.string();
           continue;
         }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.status = reader.int32() as any;
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -1985,6 +2082,12 @@ export const Scan: MessageFns<Scan> = {
         : isSet(object.workspace_id)
         ? globalThis.String(object.workspace_id)
         : "",
+      status: isSet(object.status) ? scanStatusFromJSON(object.status) : 0,
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
     };
   },
 
@@ -2017,6 +2120,12 @@ export const Scan: MessageFns<Scan> = {
     if (message.workspaceId !== "") {
       obj.workspaceId = message.workspaceId;
     }
+    if (message.status !== 0) {
+      obj.status = scanStatusToJSON(message.status);
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
     return obj;
   },
 
@@ -2040,6 +2149,8 @@ export const Scan: MessageFns<Scan> = {
       : undefined;
     message.isSummaryMode = object.isSummaryMode ?? false;
     message.workspaceId = object.workspaceId ?? "";
+    message.status = object.status ?? 0;
+    message.errorMessage = object.errorMessage ?? "";
     return message;
   },
 };
@@ -2222,6 +2333,194 @@ export const ScanSnapshotResponse: MessageFns<ScanSnapshotResponse> = {
   fromPartial<I extends Exact<DeepPartial<ScanSnapshotResponse>, I>>(object: I): ScanSnapshotResponse {
     const message = createBaseScanSnapshotResponse();
     message.scan = (object.scan !== undefined && object.scan !== null) ? Scan.fromPartial(object.scan) : undefined;
+    return message;
+  },
+};
+
+function createBaseSubmitScanRequest(): SubmitScanRequest {
+  return { workspaceId: "", fileName: "", fileContent: Buffer.alloc(0), fileSize: 0 };
+}
+
+export const SubmitScanRequest: MessageFns<SubmitScanRequest> = {
+  encode(message: SubmitScanRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.workspaceId !== "") {
+      writer.uint32(10).string(message.workspaceId);
+    }
+    if (message.fileName !== "") {
+      writer.uint32(18).string(message.fileName);
+    }
+    if (message.fileContent.length !== 0) {
+      writer.uint32(26).bytes(message.fileContent);
+    }
+    if (message.fileSize !== 0) {
+      writer.uint32(32).int64(message.fileSize);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SubmitScanRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubmitScanRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.workspaceId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.fileName = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.fileContent = Buffer.from(reader.bytes());
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.fileSize = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SubmitScanRequest {
+    return {
+      workspaceId: isSet(object.workspaceId)
+        ? globalThis.String(object.workspaceId)
+        : isSet(object.workspace_id)
+        ? globalThis.String(object.workspace_id)
+        : "",
+      fileName: isSet(object.fileName)
+        ? globalThis.String(object.fileName)
+        : isSet(object.file_name)
+        ? globalThis.String(object.file_name)
+        : "",
+      fileContent: isSet(object.fileContent)
+        ? Buffer.from(bytesFromBase64(object.fileContent))
+        : isSet(object.file_content)
+        ? Buffer.from(bytesFromBase64(object.file_content))
+        : Buffer.alloc(0),
+      fileSize: isSet(object.fileSize)
+        ? globalThis.Number(object.fileSize)
+        : isSet(object.file_size)
+        ? globalThis.Number(object.file_size)
+        : 0,
+    };
+  },
+
+  toJSON(message: SubmitScanRequest): unknown {
+    const obj: any = {};
+    if (message.workspaceId !== "") {
+      obj.workspaceId = message.workspaceId;
+    }
+    if (message.fileName !== "") {
+      obj.fileName = message.fileName;
+    }
+    if (message.fileContent.length !== 0) {
+      obj.fileContent = base64FromBytes(message.fileContent);
+    }
+    if (message.fileSize !== 0) {
+      obj.fileSize = Math.round(message.fileSize);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SubmitScanRequest>, I>>(base?: I): SubmitScanRequest {
+    return SubmitScanRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SubmitScanRequest>, I>>(object: I): SubmitScanRequest {
+    const message = createBaseSubmitScanRequest();
+    message.workspaceId = object.workspaceId ?? "";
+    message.fileName = object.fileName ?? "";
+    message.fileContent = object.fileContent ?? Buffer.alloc(0);
+    message.fileSize = object.fileSize ?? 0;
+    return message;
+  },
+};
+
+function createBaseSubmitScanResponse(): SubmitScanResponse {
+  return { scanId: "" };
+}
+
+export const SubmitScanResponse: MessageFns<SubmitScanResponse> = {
+  encode(message: SubmitScanResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.scanId !== "") {
+      writer.uint32(10).string(message.scanId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SubmitScanResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubmitScanResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.scanId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SubmitScanResponse {
+    return {
+      scanId: isSet(object.scanId)
+        ? globalThis.String(object.scanId)
+        : isSet(object.scan_id)
+        ? globalThis.String(object.scan_id)
+        : "",
+    };
+  },
+
+  toJSON(message: SubmitScanResponse): unknown {
+    const obj: any = {};
+    if (message.scanId !== "") {
+      obj.scanId = message.scanId;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SubmitScanResponse>, I>>(base?: I): SubmitScanResponse {
+    return SubmitScanResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SubmitScanResponse>, I>>(object: I): SubmitScanResponse {
+    const message = createBaseSubmitScanResponse();
+    message.scanId = object.scanId ?? "";
     return message;
   },
 };
@@ -2826,6 +3125,15 @@ export const RbacScannerServiceService = {
       Buffer.from(ScanSnapshotResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): ScanSnapshotResponse => ScanSnapshotResponse.decode(value),
   },
+  submitScan: {
+    path: "/kubescope.scanner.v1.RbacScannerService/SubmitScan" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: SubmitScanRequest): Buffer => Buffer.from(SubmitScanRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): SubmitScanRequest => SubmitScanRequest.decode(value),
+    responseSerialize: (value: SubmitScanResponse): Buffer => Buffer.from(SubmitScanResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): SubmitScanResponse => SubmitScanResponse.decode(value),
+  },
   getScan: {
     path: "/kubescope.scanner.v1.RbacScannerService/GetScan" as const,
     requestStream: false as const,
@@ -2868,6 +3176,7 @@ export const RbacScannerServiceService = {
 
 export interface RbacScannerServiceServer extends UntypedServiceImplementation {
   scanSnapshot: handleUnaryCall<ScanSnapshotRequest, ScanSnapshotResponse>;
+  submitScan: handleUnaryCall<SubmitScanRequest, SubmitScanResponse>;
   getScan: handleUnaryCall<GetScanRequest, GetScanResponse>;
   listScans: handleUnaryCall<ListScansRequest, ListScansResponse>;
   listScansByCluster: handleUnaryCall<ListScansByClusterRequest, ListScansByClusterResponse>;
@@ -2889,6 +3198,21 @@ export interface RbacScannerServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: ScanSnapshotResponse) => void,
+  ): ClientUnaryCall;
+  submitScan(
+    request: SubmitScanRequest,
+    callback: (error: ServiceError | null, response: SubmitScanResponse) => void,
+  ): ClientUnaryCall;
+  submitScan(
+    request: SubmitScanRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SubmitScanResponse) => void,
+  ): ClientUnaryCall;
+  submitScan(
+    request: SubmitScanRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SubmitScanResponse) => void,
   ): ClientUnaryCall;
   getScan(
     request: GetScanRequest,

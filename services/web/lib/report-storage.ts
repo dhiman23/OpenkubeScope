@@ -31,9 +31,7 @@ export async function loadReports(workspaceId: string): Promise<Report[]> {
   }
 }
 
-// Kick off report generation server-side. Status is "completed" when core-api
-// generated synchronously, or "generating" when the job was queued (SQS) —
-// callers should poll loadReports until the status flips.
+// Generate a report synchronously (server-side). Returns the new report id.
 export async function generateReport(
   workspaceId: string,
   params: {
@@ -43,7 +41,7 @@ export async function generateReport(
     clusters: string[]
     scan_ids?: string[]
   },
-): Promise<{ reportId: string; status: string }> {
+): Promise<{ reportId: string; fileSize: string }> {
   const res = await reportsApi.generate(workspaceId, {
     reportName: params.report_name,
     reportType: params.report_type,
@@ -51,7 +49,7 @@ export async function generateReport(
     clusters: params.clusters,
     scanIds: params.scan_ids,
   })
-  return { reportId: res.reportId, status: res.status }
+  return { reportId: res.reportId, fileSize: res.fileSize }
 }
 
 export async function deleteReport(workspaceId: string, reportId: string): Promise<void> {
