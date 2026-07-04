@@ -13,7 +13,7 @@ resource "aws_iam_role" "keda_irsa_role" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${replace(aws_eks_cluster.eks_prod_cluster.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:keda:keda"
+            "${replace(aws_eks_cluster.eks_prod_cluster.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:keda:kedaoperator"
             "${replace(aws_eks_cluster.eks_prod_cluster.identity[0].oidc[0].issuer, "https://", "")}:aud" = "sts.amazonaws.com"
           }
         }
@@ -116,7 +116,7 @@ resource "aws_iam_policy" "consumer_irsa_policy" {
         "sqs:GetQueueUrl"
       ]
 
-      Resource = aws_sqs_queue.keda_sqs_queue.arn
+      Resource = aws_sqs_queue.rbac_scan_queue.arn
 
     },
 
