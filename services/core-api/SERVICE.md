@@ -31,6 +31,8 @@ monolith's Supabase Auth (now `core.users` + JWT) and the API routes under
 | `SCANNER_SERVICE_ADDR` | yes | gRPC address of rbac-scanner-service |
 | `REPORT_SERVICE_ADDR` | yes | gRPC address of report-service |
 | `CRON_SECRET` | for cron | Bearer token gating `POST /api/cron/scheduled-reports` |
+| `SQS_QUEUE_URL` | no | Report-job queue URL. If set, `POST /reports` goes async (SQS); if unset, sync gRPC fallback |
+| `AWS_REGION` | when SQS on | Region for the SQS client (IRSA provides credentials) |
 | `PUBLIC_SITE_URL` | no | Frontend base URL |
 | `CORS_ORIGINS` | no (default `http://localhost:3000`) | Comma-separated allowed origins |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP collector URL; tracing off if unset |
@@ -72,9 +74,18 @@ All under `/api`. All except `/auth/*` require `Authorization: Bearer <jwt>`.
 - `GET/POST /workspaces/:id/clusters`, `DELETE /workspaces/:id/clusters/:clusterId`
 - `POST /workspaces/:id/scans` (multipart `file`) — quota-checked, calls scanner
 - `GET /workspaces/:id/scans` (`?meta=1`), `GET/DELETE /workspaces/:id/scans/:scanId`
-- `POST /workspaces/:id/reports`, `GET /workspaces/:id/reports`, `GET /workspaces/:id/reports/:reportId/download`, `DELETE …`
+- `POST /workspaces/:id/reports` — **async when `SQS_QUEUE_URL` is set**: creates the row via the `CreateReport` RPC, enqueues the job on SQS, returns `202 { reportId, status: "generating" }` (frontend polls the list). Without SQS: synchronous `GenerateReport` RPC, returns `201 { reportId, status: "completed", fileSize }`. If the enqueue fails after the row was created, the row is deleted (best-effort) and `502` is returned.
+- `GET /workspaces/:id/reports`, `GET /workspaces/:id/reports/:reportId/download`, `DELETE …`
 - `GET/POST /workspaces/:id/scheduled-reports`, `PATCH/DELETE …/:id`
 - `POST /api/cron/scheduled-reports` (bearer `CRON_SECRET`)
+
+## AWS / IAM (DevOps scope — what this service needs)
+
+As the SQS **producer**, core-api's pod service account needs an IRSA role
+with `sqs:SendMessage` (+ `sqs:GetQueueUrl`) on the report-job queue. Note:
+`infra/keda.tf` currently defines roles only for the KEDA operator
+(GetQueueAttributes) and the consumer (Receive/Delete/ChangeVisibility) —
+there is no producer policy yet. `AWS_REGION` must be set in the pod env.
 
 ## Trust boundary
 

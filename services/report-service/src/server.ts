@@ -8,7 +8,8 @@ import { HealthImplementation } from "grpc-health-check"
 import { ReportServiceService, type ReportServiceServer } from "./generated/report"
 import { generateReport } from "./lib/generate"
 import { runDueScheduledReports } from "./lib/run-scheduled"
-import { listReports, getReport, getReportFile, deleteReport } from "./lib/report-repository"
+import { createReport, listReports, getReport, getReportFile, deleteReport } from "./lib/report-repository"
+import { startSqsConsumer, stopSqsConsumer } from "./lib/sqs-consumer"
 import {
   listScheduledReports,
   createScheduledReport,
@@ -54,6 +55,30 @@ const handlers: ReportServiceServer = {
         fileSize: result.fileSize,
         errorMessage: result.errorMessage,
       })
+    } catch (err) {
+      callback({ code: grpc.status.INTERNAL, message: toMessage(err) })
+    }
+  },
+
+  // Fast path for the async (SQS) trigger: insert the row in 'generating'
+  // state so it is immediately visible via ListReports, then let the SQS
+  // consumer do the actual generation when the job message arrives.
+  async createReport(call, callback) {
+    try {
+      const r = call.request
+      if (!r.workspaceId || r.clusters.length === 0) {
+        callback({ code: grpc.status.INVALID_ARGUMENT, message: "workspace_id and at least one cluster are required" })
+        return
+      }
+      const row = await createReport({
+        workspaceId: r.workspaceId,
+        scanIds: r.scanIds,
+        reportName: r.reportName || "Report",
+        reportType: reportTypeFromProto[r.reportType] || "RBAC_AUDIT",
+        format: reportFormatFromProto[r.format] || "JSON",
+        clusters: r.clusters,
+      })
+      callback(null, { reportId: row.id })
     } catch (err) {
       callback({ code: grpc.status.INTERNAL, message: toMessage(err) })
     }
@@ -211,12 +236,16 @@ function main() {
       process.exit(1)
     }
     console.log(`report-service listening on :${boundPort}`)
+    startSqsConsumer()
   })
 
   const shutdown = () => {
     console.log("report-service shutting down")
     health.setStatus(SERVICE_NAME, "NOT_SERVING")
     server.tryShutdown(async () => {
+      // Waits for the in-flight report job (if any) to finish, so the pod's
+      // terminationGracePeriod must cover one generation plus the 20s poll.
+      await stopSqsConsumer()
       await closeClients()
       await closePool()
       await shutdownTelemetry()
