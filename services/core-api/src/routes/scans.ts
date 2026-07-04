@@ -6,6 +6,7 @@ import { getSubscription, isPremium, FREE_SCAN_LIMIT } from "../repositories/sub
 import { tryReserveFreeScanSlot, incrementScanUsage, decrementScanUsage } from "../repositories/scan-usage"
 import { scannerApi } from "../lib/grpc-clients"
 import { scanToJson } from "../lib/scan-json"
+import { scanQueueUrl, enqueueScanJob } from "../lib/sqs"
 
 // In-memory upload — snapshots are small JSON/ZIP files. 32MB cap.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 32 * 1024 * 1024 } })
@@ -38,6 +39,34 @@ scansRouter.post("/:workspaceId/scans", upload.single("file"), async (req, res) 
     reserved = true
   }
 
+  // Async path (event-driven flow): persist the raw snapshot as a 'pending'
+  // scan via SubmitScan, publish {scanId, workspaceId} to the rbac_scan_queue,
+  // and return 202 — rbac-scanner-service consumes the queue (KEDA-scaled) and
+  // completes the row. The frontend polls GET /scans/:scanId until the status
+  // flips. Note: the quota slot stays consumed if the scan later fails — the
+  // consumer can't touch the core schema; deleting the failed scan refunds it.
+  if (scanQueueUrl()) {
+    let scanId = ""
+    try {
+      const submitted = await scannerApi.submitScan({
+        workspaceId: ws.id,
+        fileName: req.file.originalname,
+        fileContent: req.file.buffer,
+        fileSize: req.file.size,
+      })
+      scanId = submitted.scanId
+      await enqueueScanJob({ scanId, workspaceId: ws.id })
+      return res.status(202).json({ scan: { id: scanId, status: "pending", fileName: req.file.originalname } })
+    } catch (err) {
+      // Enqueue failed after the pending row was created — remove the orphan
+      // row and refund the quota slot.
+      if (scanId) await scannerApi.deleteScan({ workspaceId: ws.id, scanId }).catch(() => {})
+      if (reserved) await decrementScanUsage(ws.id).catch(() => {})
+      return res.status(502).json({ error: err instanceof Error ? err.message : "Failed to queue scan" })
+    }
+  }
+
+  // Sync fallback (no SQS configured — local dev without AWS).
   try {
     const result = await scannerApi.scanSnapshot({
       workspaceId: ws.id,

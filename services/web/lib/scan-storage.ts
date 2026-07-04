@@ -27,6 +27,25 @@ export async function uploadScan(workspaceId: string, file: File): Promise<Scan>
   }
 }
 
+// Poll a queued scan until the scanner worker finishes it (async SQS path).
+// Resolves with the terminal scan (completed or failed); throws on timeout.
+export async function waitForScan(
+  workspaceId: string,
+  scanId: string,
+  opts: { intervalMs?: number; timeoutMs?: number } = {},
+): Promise<Scan> {
+  const intervalMs = opts.intervalMs ?? 2000
+  const timeoutMs = opts.timeoutMs ?? 120000
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    const scan = (await scansApi.get(workspaceId, scanId)) as Scan
+    if (!scan.status || scan.status !== "pending") return scan
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+  throw new Error("Scan is taking longer than expected — check the clusters page in a moment.")
+}
+
 export async function loadScans(workspaceId: string): Promise<Scan[]> {
   try {
     return (await scansApi.list(workspaceId, false)) as Scan[]

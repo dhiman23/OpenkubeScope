@@ -36,6 +36,12 @@ const CATEGORY_TO_PROTO: Record<engine.RBACFinding["category"], proto.FindingCat
   BEST_PRACTICE: proto.FindingCategory.BEST_PRACTICE,
 }
 
+const STATUS_TO_PROTO: Record<engine.ScanStatusStr, proto.ScanStatus> = {
+  pending: proto.ScanStatus.PENDING,
+  completed: proto.ScanStatus.COMPLETED,
+  failed: proto.ScanStatus.FAILED,
+}
+
 function subjectToProto(s: engine.RBACSubject): proto.RBACSubject {
   return { name: s.name, kind: SUBJECT_KIND_TO_PROTO[s.kind] ?? proto.SubjectKind.USER, namespace: s.namespace }
 }
@@ -117,5 +123,9 @@ export function scanToProto(workspaceId: string, s: engine.Scan): proto.Scan {
     dataset: datasetToProto(s.dataset),
     isSummaryMode: s.isSummaryMode || false,
     workspaceId,
+    // Engine-produced scans (sync path) have no status — they are completed by
+    // construction; DB reads carry pending/failed for the async path.
+    status: STATUS_TO_PROTO[s.status ?? "completed"] ?? proto.ScanStatus.COMPLETED,
+    errorMessage: s.errorMessage || "",
   }
 }

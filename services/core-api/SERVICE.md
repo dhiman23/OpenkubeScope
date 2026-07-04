@@ -31,7 +31,7 @@ monolith's Supabase Auth (now `core.users` + JWT) and the API routes under
 | `SCANNER_SERVICE_ADDR` | yes | gRPC address of rbac-scanner-service |
 | `REPORT_SERVICE_ADDR` | yes | gRPC address of report-service |
 | `CRON_SECRET` | for cron | Bearer token gating `POST /api/cron/scheduled-reports` |
-| `SQS_QUEUE_URL` | no | Report-job queue URL. If set, `POST /reports` goes async (SQS); if unset, sync gRPC fallback |
+| `SCAN_SQS_QUEUE_URL` | no | `rbac_scan_queue` URL. If set, `POST /scans` goes async (SQS); if unset, sync gRPC fallback |
 | `AWS_REGION` | when SQS on | Region for the SQS client (IRSA provides credentials) |
 | `PUBLIC_SITE_URL` | no | Frontend base URL |
 | `CORS_ORIGINS` | no (default `http://localhost:3000`) | Comma-separated allowed origins |
@@ -72,7 +72,7 @@ All under `/api`. All except `/auth/*` require `Authorization: Bearer <jwt>`.
 - `POST /auth/change-credentials` (auth) → set new username + password, returns a fresh token. The only action allowed while `mustChange` is true.
 - `GET/POST /workspaces`, `PATCH/DELETE /workspaces/:id`, `POST /workspaces/:id/activate`
 - `GET/POST /workspaces/:id/clusters`, `DELETE /workspaces/:id/clusters/:clusterId`
-- `POST /workspaces/:id/scans` (multipart `file`) — quota-checked, calls scanner
+- `POST /workspaces/:id/scans` (multipart `file`) — quota-checked. **Async when `SCAN_SQS_QUEUE_URL` is set** (the event-driven flow): persists the snapshot via the `SubmitScan` RPC, publishes `{scanId, workspaceId}` to `rbac_scan_queue`, returns `202 { scan: { id, status: "pending", fileName } }`; the frontend polls `GET /scans/:scanId` until the status flips. Without SQS: synchronous `ScanSnapshot` RPC, returns `201` with the full scan. If the enqueue fails after the row was created, the orphan row is deleted and the quota slot refunded (best-effort), `502` returned. A scan that fails **after** queueing keeps its quota slot — deleting the failed scan refunds it.
 - `GET /workspaces/:id/scans` (`?meta=1`), `GET/DELETE /workspaces/:id/scans/:scanId`
 - `POST /workspaces/:id/reports` — **async when `SQS_QUEUE_URL` is set**: creates the row via the `CreateReport` RPC, enqueues the job on SQS, returns `202 { reportId, status: "generating" }` (frontend polls the list). Without SQS: synchronous `GenerateReport` RPC, returns `201 { reportId, status: "completed", fileSize }`. If the enqueue fails after the row was created, the row is deleted (best-effort) and `502` is returned.
 - `GET /workspaces/:id/reports`, `GET /workspaces/:id/reports/:reportId/download`, `DELETE …`
@@ -81,11 +81,12 @@ All under `/api`. All except `/auth/*` require `Authorization: Bearer <jwt>`.
 
 ## AWS / IAM (DevOps scope — what this service needs)
 
-As the SQS **producer**, core-api's pod service account needs an IRSA role
-with `sqs:SendMessage` (+ `sqs:GetQueueUrl`) on the report-job queue. Note:
+As the SQS **producer** in the event-driven scan flow (core-api →
+`rbac_scan_queue` → rbac-scanner-service), core-api's pod service account
+needs an IRSA role with only `sqs:SendMessage` on the queue. Note:
 `infra/keda.tf` currently defines roles only for the KEDA operator
-(GetQueueAttributes) and the consumer (Receive/Delete/ChangeVisibility) —
-there is no producer policy yet. `AWS_REGION` must be set in the pod env.
+(GetQueueAttributes/GetQueueUrl) and the consumer — the producer policy is
+deferred/not created yet. `AWS_REGION` must be set in the pod env.
 
 ## Trust boundary
 

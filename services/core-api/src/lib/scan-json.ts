@@ -88,5 +88,19 @@ export function scanToJson(s: scanner.Scan | undefined) {
     riskCounts: s.riskCounts || { critical: 0, high: 0, medium: 0, low: 0 },
     dataset: datasetToJson(s.dataset),
     isSummaryMode: s.isSummaryMode,
+    status: scanStatusToJson(s.status),
+    errorMessage: s.errorMessage || null,
+  }
+}
+
+// Pre-async rows and sync-path scans are always completed.
+function scanStatusToJson(status: scanner.ScanStatus | undefined): "pending" | "completed" | "failed" {
+  switch (status) {
+    case scanner.ScanStatus.PENDING:
+      return "pending"
+    case scanner.ScanStatus.FAILED:
+      return "failed"
+    default:
+      return "completed"
   }
 }

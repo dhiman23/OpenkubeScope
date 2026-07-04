@@ -124,6 +124,16 @@ message ScanTotals {
   int32 bindings = 3;
 }
 
+// Lifecycle of a scan row. Synchronous ScanSnapshot only ever produces
+// COMPLETED rows; the async path (SubmitScan + SQS consumer) moves a row
+// PENDING -> COMPLETED | FAILED.
+enum ScanStatus {
+  SCAN_STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  COMPLETED = 2;
+  FAILED = 3;
+}
+
 message ScanRiskCounts {
   int32 critical = 1;
   int32 high = 2;
@@ -141,6 +151,8 @@ message Scan {
   ScanDataset dataset = 7;
   bool is_summary_mode = 8;
   string workspace_id = 9;
+  ScanStatus status = 10;
+  string error_message = 11; // set when status == FAILED
 }
 
 // ============================================
@@ -159,6 +171,24 @@ message ScanSnapshotRequest {
 
 message ScanSnapshotResponse {
   Scan scan = 1;
+}
+
+// Async intake for the event-driven flow (core-api -> SQS -> this service).
+// Persists the raw snapshot bytes and a scan row in PENDING state, without
+// running the findings engine, and returns the new scan id. core-api then
+// publishes {scan_id, workspace_id} to the rbac_scan_queue; the SQS consumer
+// in this service picks it up, runs the engine, and completes the row. The
+// raw bytes stay in this service's own schema so the SQS message stays tiny
+// (well under the 256KB SQS limit — snapshots can be up to 32MB).
+message SubmitScanRequest {
+  string workspace_id = 1;
+  string file_name = 2;
+  bytes file_content = 3;
+  int64 file_size = 4;
+}
+
+message SubmitScanResponse {
+  string scan_id = 1;
 }
 
 message GetScanRequest {
@@ -208,6 +238,7 @@ message DeleteScanResponse {
 
 service RbacScannerService {
   rpc ScanSnapshot(ScanSnapshotRequest) returns (ScanSnapshotResponse);
+  rpc SubmitScan(SubmitScanRequest) returns (SubmitScanResponse);
   rpc GetScan(GetScanRequest) returns (GetScanResponse);
   rpc ListScans(ListScansRequest) returns (ListScansResponse);
   rpc ListScansByCluster(ListScansByClusterRequest) returns (ListScansByClusterResponse);

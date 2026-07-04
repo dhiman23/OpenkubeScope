@@ -36,6 +36,7 @@ function call<Res>(invoke: (cb: (e: grpc.ServiceError | null, r: Res) => void) =
 // ---- scanner ----
 export const scannerApi = {
   scanSnapshot: (req: scanner.ScanSnapshotRequest) => call<scanner.ScanSnapshotResponse>((cb) => scannerC().scanSnapshot(req, cb)),
+  submitScan: (req: scanner.SubmitScanRequest) => call<scanner.SubmitScanResponse>((cb) => scannerC().submitScan(req, cb)),
   getScan: (req: scanner.GetScanRequest) => call<scanner.GetScanResponse>((cb) => scannerC().getScan(req, cb)),
   listScans: (req: scanner.ListScansRequest) => call<scanner.ListScansResponse>((cb) => scannerC().listScans(req, cb)),
   listScansByCluster: (req: scanner.ListScansByClusterRequest) => call<scanner.ListScansByClusterResponse>((cb) => scannerC().listScansByCluster(req, cb)),
@@ -45,7 +46,6 @@ export const scannerApi = {
 // ---- report ----
 export const reportApi = {
   generateReport: (req: report.GenerateReportRequest) => call<report.GenerateReportResponse>((cb) => reportC().generateReport(req, cb)),
-  createReport: (req: report.CreateReportRequest) => call<report.CreateReportResponse>((cb) => reportC().createReport(req, cb)),
   getReport: (req: report.GetReportRequest) => call<report.GetReportResponse>((cb) => reportC().getReport(req, cb)),
   listReports: (req: report.ListReportsRequest) => call<report.ListReportsResponse>((cb) => reportC().listReports(req, cb)),
   deleteReport: (req: report.DeleteReportRequest) => call<report.DeleteReportResponse>((cb) => reportC().deleteReport(req, cb)),

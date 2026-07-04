@@ -199,10 +199,8 @@ export const subscriptionApi = {
 
 export const reportsApi = {
   list: (workspaceId: string) => apiFetch<{ reports: unknown[] }>(`/workspaces/${workspaceId}/reports`).then((r) => r.reports),
-  // status is "completed" (sync path) or "generating" (async SQS path — poll
-  // the list until it flips). fileSize only present on the sync path.
   generate: (workspaceId: string, body: { reportName: string; reportType: string; format: string; clusters: string[]; scanIds?: string[] }) =>
-    apiFetch<{ reportId: string; status: string; fileSize?: string }>(`/workspaces/${workspaceId}/reports`, { method: "POST", body }),
+    apiFetch<{ reportId: string; status: string; fileSize: string }>(`/workspaces/${workspaceId}/reports`, { method: "POST", body }),
   remove: (workspaceId: string, reportId: string) =>
     apiFetch<{ deleted: boolean }>(`/workspaces/${workspaceId}/reports/${reportId}`, { method: "DELETE" }),
   download: (workspaceId: string, reportId: string) => apiDownload(`/workspaces/${workspaceId}/reports/${reportId}/download`),

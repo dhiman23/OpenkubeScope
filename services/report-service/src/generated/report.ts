@@ -329,24 +329,6 @@ export interface GenerateReportResponse {
   errorMessage: string;
 }
 
-/**
- * Inserts the report row in 'generating' state and returns its id without
- * doing any generation work. Used by core-api on the async (SQS) path so the
- * report is visible in ListReports while the job waits in the queue.
- */
-export interface CreateReportRequest {
-  workspaceId: string;
-  reportName: string;
-  reportType: ReportType;
-  format: ReportFormat;
-  clusters: string[];
-  scanIds: string[];
-}
-
-export interface CreateReportResponse {
-  reportId: string;
-}
-
 export interface GetReportRequest {
   workspaceId: string;
   reportId: string;
@@ -2458,226 +2440,6 @@ export const GenerateReportResponse: MessageFns<GenerateReportResponse> = {
     message.fileContent = object.fileContent ?? Buffer.alloc(0);
     message.fileSize = object.fileSize ?? "";
     message.errorMessage = object.errorMessage ?? "";
-    return message;
-  },
-};
-
-function createBaseCreateReportRequest(): CreateReportRequest {
-  return { workspaceId: "", reportName: "", reportType: 0, format: 0, clusters: [], scanIds: [] };
-}
-
-export const CreateReportRequest: MessageFns<CreateReportRequest> = {
-  encode(message: CreateReportRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.workspaceId !== "") {
-      writer.uint32(10).string(message.workspaceId);
-    }
-    if (message.reportName !== "") {
-      writer.uint32(18).string(message.reportName);
-    }
-    if (message.reportType !== 0) {
-      writer.uint32(24).int32(message.reportType);
-    }
-    if (message.format !== 0) {
-      writer.uint32(32).int32(message.format);
-    }
-    for (const v of message.clusters) {
-      writer.uint32(42).string(v!);
-    }
-    for (const v of message.scanIds) {
-      writer.uint32(50).string(v!);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): CreateReportRequest {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCreateReportRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.workspaceId = reader.string();
-          continue;
-        }
-        case 2: {
-          if (tag !== 18) {
-            break;
-          }
-
-          message.reportName = reader.string();
-          continue;
-        }
-        case 3: {
-          if (tag !== 24) {
-            break;
-          }
-
-          message.reportType = reader.int32() as any;
-          continue;
-        }
-        case 4: {
-          if (tag !== 32) {
-            break;
-          }
-
-          message.format = reader.int32() as any;
-          continue;
-        }
-        case 5: {
-          if (tag !== 42) {
-            break;
-          }
-
-          message.clusters.push(reader.string());
-          continue;
-        }
-        case 6: {
-          if (tag !== 50) {
-            break;
-          }
-
-          message.scanIds.push(reader.string());
-          continue;
-        }
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): CreateReportRequest {
-    return {
-      workspaceId: isSet(object.workspaceId)
-        ? globalThis.String(object.workspaceId)
-        : isSet(object.workspace_id)
-        ? globalThis.String(object.workspace_id)
-        : "",
-      reportName: isSet(object.reportName)
-        ? globalThis.String(object.reportName)
-        : isSet(object.report_name)
-        ? globalThis.String(object.report_name)
-        : "",
-      reportType: isSet(object.reportType)
-        ? reportTypeFromJSON(object.reportType)
-        : isSet(object.report_type)
-        ? reportTypeFromJSON(object.report_type)
-        : 0,
-      format: isSet(object.format) ? reportFormatFromJSON(object.format) : 0,
-      clusters: globalThis.Array.isArray(object?.clusters) ? object.clusters.map((e: any) => globalThis.String(e)) : [],
-      scanIds: globalThis.Array.isArray(object?.scanIds)
-        ? object.scanIds.map((e: any) => globalThis.String(e))
-        : globalThis.Array.isArray(object?.scan_ids)
-        ? object.scan_ids.map((e: any) => globalThis.String(e))
-        : [],
-    };
-  },
-
-  toJSON(message: CreateReportRequest): unknown {
-    const obj: any = {};
-    if (message.workspaceId !== "") {
-      obj.workspaceId = message.workspaceId;
-    }
-    if (message.reportName !== "") {
-      obj.reportName = message.reportName;
-    }
-    if (message.reportType !== 0) {
-      obj.reportType = reportTypeToJSON(message.reportType);
-    }
-    if (message.format !== 0) {
-      obj.format = reportFormatToJSON(message.format);
-    }
-    if (message.clusters?.length) {
-      obj.clusters = message.clusters;
-    }
-    if (message.scanIds?.length) {
-      obj.scanIds = message.scanIds;
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<CreateReportRequest>, I>>(base?: I): CreateReportRequest {
-    return CreateReportRequest.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CreateReportRequest>, I>>(object: I): CreateReportRequest {
-    const message = createBaseCreateReportRequest();
-    message.workspaceId = object.workspaceId ?? "";
-    message.reportName = object.reportName ?? "";
-    message.reportType = object.reportType ?? 0;
-    message.format = object.format ?? 0;
-    message.clusters = object.clusters?.map((e) => e) || [];
-    message.scanIds = object.scanIds?.map((e) => e) || [];
-    return message;
-  },
-};
-
-function createBaseCreateReportResponse(): CreateReportResponse {
-  return { reportId: "" };
-}
-
-export const CreateReportResponse: MessageFns<CreateReportResponse> = {
-  encode(message: CreateReportResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.reportId !== "") {
-      writer.uint32(10).string(message.reportId);
-    }
-    return writer;
-  },
-
-  decode(input: BinaryReader | Uint8Array, length?: number): CreateReportResponse {
-    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
-    const end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCreateReportResponse();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1: {
-          if (tag !== 10) {
-            break;
-          }
-
-          message.reportId = reader.string();
-          continue;
-        }
-      }
-      if ((tag & 7) === 4 || tag === 0) {
-        break;
-      }
-      reader.skip(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): CreateReportResponse {
-    return {
-      reportId: isSet(object.reportId)
-        ? globalThis.String(object.reportId)
-        : isSet(object.report_id)
-        ? globalThis.String(object.report_id)
-        : "",
-    };
-  },
-
-  toJSON(message: CreateReportResponse): unknown {
-    const obj: any = {};
-    if (message.reportId !== "") {
-      obj.reportId = message.reportId;
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<CreateReportResponse>, I>>(base?: I): CreateReportResponse {
-    return CreateReportResponse.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CreateReportResponse>, I>>(object: I): CreateReportResponse {
-    const message = createBaseCreateReportResponse();
-    message.reportId = object.reportId ?? "";
     return message;
   },
 };
@@ -4799,16 +4561,6 @@ export const ReportServiceService = {
       Buffer.from(GenerateReportResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): GenerateReportResponse => GenerateReportResponse.decode(value),
   },
-  createReport: {
-    path: "/kubescope.report.v1.ReportService/CreateReport" as const,
-    requestStream: false as const,
-    responseStream: false as const,
-    requestSerialize: (value: CreateReportRequest): Buffer => Buffer.from(CreateReportRequest.encode(value).finish()),
-    requestDeserialize: (value: Buffer): CreateReportRequest => CreateReportRequest.decode(value),
-    responseSerialize: (value: CreateReportResponse): Buffer =>
-      Buffer.from(CreateReportResponse.encode(value).finish()),
-    responseDeserialize: (value: Buffer): CreateReportResponse => CreateReportResponse.decode(value),
-  },
   getReport: {
     path: "/kubescope.report.v1.ReportService/GetReport" as const,
     requestStream: false as const,
@@ -4897,7 +4649,6 @@ export const ReportServiceService = {
 
 export interface ReportServiceServer extends UntypedServiceImplementation {
   generateReport: handleUnaryCall<GenerateReportRequest, GenerateReportResponse>;
-  createReport: handleUnaryCall<CreateReportRequest, CreateReportResponse>;
   getReport: handleUnaryCall<GetReportRequest, GetReportResponse>;
   listReports: handleUnaryCall<ListReportsRequest, ListReportsResponse>;
   deleteReport: handleUnaryCall<DeleteReportRequest, DeleteReportResponse>;
@@ -4923,21 +4674,6 @@ export interface ReportServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: GenerateReportResponse) => void,
-  ): ClientUnaryCall;
-  createReport(
-    request: CreateReportRequest,
-    callback: (error: ServiceError | null, response: CreateReportResponse) => void,
-  ): ClientUnaryCall;
-  createReport(
-    request: CreateReportRequest,
-    metadata: Metadata,
-    callback: (error: ServiceError | null, response: CreateReportResponse) => void,
-  ): ClientUnaryCall;
-  createReport(
-    request: CreateReportRequest,
-    metadata: Metadata,
-    options: Partial<CallOptions>,
-    callback: (error: ServiceError | null, response: CreateReportResponse) => void,
   ): ClientUnaryCall;
   getReport(
     request: GetReportRequest,
