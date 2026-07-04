@@ -45,6 +45,7 @@ export const scannerApi = {
 // ---- report ----
 export const reportApi = {
   generateReport: (req: report.GenerateReportRequest) => call<report.GenerateReportResponse>((cb) => reportC().generateReport(req, cb)),
+  createReport: (req: report.CreateReportRequest) => call<report.CreateReportResponse>((cb) => reportC().createReport(req, cb)),
   getReport: (req: report.GetReportRequest) => call<report.GetReportResponse>((cb) => reportC().getReport(req, cb)),
   listReports: (req: report.ListReportsRequest) => call<report.ListReportsResponse>((cb) => reportC().listReports(req, cb)),
   deleteReport: (req: report.DeleteReportRequest) => call<report.DeleteReportResponse>((cb) => reportC().deleteReport(req, cb)),

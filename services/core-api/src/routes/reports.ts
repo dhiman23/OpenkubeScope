@@ -3,6 +3,7 @@ import { requireAuth, requireCredentialsChanged } from "../auth/middleware"
 import { getOwnedWorkspace } from "../repositories/workspaces"
 import { reportApi, report as reportProto } from "../lib/grpc-clients"
 import { reportToJson, scheduledToJson } from "../lib/report-json"
+import { reportQueueUrl, enqueueReportJob } from "../lib/report-queue"
 
 export const reportsRouter = Router()
 reportsRouter.use(requireAuth, requireCredentialsChanged)
@@ -27,16 +28,49 @@ reportsRouter.post("/:workspaceId/reports", async (req, res) => {
     return res.status(400).json({ error: "clusters (non-empty array) required" })
   }
 
+  const name = typeof reportName === "string" ? reportName : "Report"
+  const type = reportProto.reportTypeFromJSON(reportType ?? "RBAC_AUDIT")
+  const fmt = reportProto.reportFormatFromJSON(format ?? "JSON")
+  const ids = Array.isArray(scanIds) ? scanIds : []
+
+  // Async path: create the row (visible immediately as 'generating'), then
+  // enqueue the job on SQS for report-service; KEDA scales consumers on queue
+  // depth. The frontend polls the list until the status flips.
+  if (reportQueueUrl()) {
+    let reportId = ""
+    try {
+      const created = await reportApi.createReport({ workspaceId: ws.id, reportName: name, reportType: type, format: fmt, clusters, scanIds: ids })
+      reportId = created.reportId
+      await enqueueReportJob({
+        reportId,
+        workspaceId: ws.id,
+        workspaceName: ws.name,
+        clusters,
+        reportType: reportProto.reportTypeToJSON(type),
+        format: reportProto.reportFormatToJSON(fmt),
+        reportName: name,
+        scanIds: ids,
+      })
+      return res.status(202).json({ reportId, status: "generating" })
+    } catch (err) {
+      // Enqueue failed after the row was created — remove it so it doesn't
+      // sit in 'generating' forever with no job behind it.
+      if (reportId) await reportApi.deleteReport({ workspaceId: ws.id, reportId }).catch(() => {})
+      return res.status(502).json({ error: err instanceof Error ? err.message : "Failed to queue report generation" })
+    }
+  }
+
+  // Sync fallback (no SQS configured — local dev without AWS).
   try {
     const result = await reportApi.generateReport({
       reportId: "",
       workspaceId: ws.id,
       workspaceName: ws.name,
       clusters,
-      reportType: reportProto.reportTypeFromJSON(reportType ?? "RBAC_AUDIT"),
-      format: reportProto.reportFormatFromJSON(format ?? "JSON"),
-      reportName: typeof reportName === "string" ? reportName : "Report",
-      scanIds: Array.isArray(scanIds) ? scanIds : [],
+      reportType: type,
+      format: fmt,
+      reportName: name,
+      scanIds: ids,
     })
 
     if (result.status === reportProto.ReportStatus.FAILED) {
