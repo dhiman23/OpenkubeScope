@@ -79,7 +79,7 @@ jobs:
                 {
                   "color": "#0256ff",
                   "title": "scan done",
-                  "text": "scan done onthe infrastructure. Please check the scaned pipeline.",
+                  "text": "scan done on the infrastructure. Please check the scaned pipeline.",
                     
                 }
               ]

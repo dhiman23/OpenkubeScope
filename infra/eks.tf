@@ -8,6 +8,7 @@ resource "aws_eks_cluster" "eks_prod_cluster" {
     authentication_mode = "API"
   }
 
+#this role is assume by the eks
   role_arn = aws_iam_role.cluster.arn
 
   version = "1.35"
@@ -51,6 +52,7 @@ resource "aws_iam_role" "cluster" {
           "sts:TagSession"
         ]
         Effect = "Allow"
+        #this will only assume by eks
         Principal = {
           Service = "eks.amazonaws.com"
         }
@@ -72,6 +74,7 @@ resource "aws_iam_role" "node_group" {
           "sts:AssumeRole",
           "sts:TagSession"
         ]
+        #this will only assume by ec2
         Effect = "Allow"
         Principal = {
           Service = "ec2.amazonaws.com"
@@ -81,32 +84,8 @@ resource "aws_iam_role" "node_group" {
   })
 }
 
-#role policy attachments for the EKS cluster and node group
 
-resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.cluster.name
-}
 
-resource "aws_iam_role_policy_attachment" "cluster_CNI_Policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = aws_iam_role.node_group.name
-}
-resource "aws_iam_role_policy_attachment" "cluster_ECRPullOnly" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
-  role       = aws_iam_role.node_group.name
-}
-
-resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSWorkerNodePolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = aws_iam_role.node_group.name
-}
-
-#create an instance profile for the EKS node group
-resource "aws_iam_instance_profile" "eks_prod_instance_profile" {
-  name = "eks-prod-instance-profile"
-  role = aws_iam_role.node_group.name
-}
 
 # node group for the EKS cluster 
 resource "aws_eks_node_group" "eks_prod_node_group" {
@@ -122,6 +101,10 @@ resource "aws_eks_node_group" "eks_prod_node_group" {
     desired_size = 2
     max_size     = 2
     min_size     = 1
+  }
+  launch_template {
+    id      = aws_launch_template.eks_prod_launch_template.id
+    version = "$Latest"
   }
 
   capacity_type = "ON_DEMAND"
@@ -151,10 +134,7 @@ resource "aws_launch_template" "eks_prod_launch_template" {
   image_id      = data.aws_ssm_parameter.eks_worker_image_id.value
   instance_type = "t3.medium"
   key_name      = "us-1"
-
-  iam_instance_profile {
-    name = aws_iam_instance_profile.eks_prod_instance_profile.name
-  }
+ 
 
   tag_specifications {
     resource_type = "instance"
@@ -183,6 +163,27 @@ resource "aws_launch_template" "eks_prod_launch_template" {
   monitoring {
     enabled = true
   }
+}
+
+#role policy attachments for the EKS cluster and node group
+
+resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSClusterPolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.cluster.name
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_CNI_Policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.node_group.name
+}
+resource "aws_iam_role_policy_attachment" "cluster_ECRPullOnly" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+  role       = aws_iam_role.node_group.name
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_AmazonEKSWorkerNodePolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node_group.name
 }
 
 
