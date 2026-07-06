@@ -75,6 +75,33 @@ npm start          # node dist/server.js
 npm run typecheck
 ```
 
+## Container build & run
+
+No `Dockerfile` here yet — when you write one, follow the pattern used in
+`services/rbac-scanner-service/Dockerfile` (multi-stage: builder installs
+`protoc` + runs `npm run build`; runtime stage copies `dist/` + production
+`node_modules`, non-root user).
+
+**Build context must be the repo root, not this directory** — `scripts/gen-proto.sh`
+reads `proto/scanner.proto` *and* `proto/report.proto` via `../../proto` (this
+service is a gRPC server for report.proto and a client of scanner.proto), so
+both files must be in the build context:
+
+```bash
+# from the repo root
+docker build -f services/report-service/Dockerfile -t report-service .
+```
+
+- Exposes gRPC port `50052`.
+- Runtime env required: `DATABASE_URL` (+ `DATABASE_SSL`/`DATABASE_POOL_MAX`
+  optional), `SCANNER_SERVICE_ADDR` (gRPC address of rbac-scanner-service —
+  required, this service calls it for scan data), `REDIS_URL` (optional,
+  caching only), `PUBLIC_SITE_URL` (optional, Slack deep-links). Full list
+  above under Environment variables.
+- No SQS/AWS env needed — report generation is synchronous gRPC only (a
+  dedicated report-generation queue is a later milestone).
+- Health check: gRPC Health Checking Protocol on `kubescope.report.v1.ReportService`.
+
 ## RPCs (see proto/report.proto for the full contract)
 
 - `GenerateReport` — fetch scans (via scanner gRPC), build report, render JSON/CSV/PDF bytes, persist, return. Returns `file_content` bytes (the downloadable file); the structured `report_data` proto field is intentionally not populated (the rendered file carries the data — for JSON the bytes *are* the data).
