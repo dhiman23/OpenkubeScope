@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: core-api
+  name: core-api
+  namespace: openkubescope
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: core-api
+#update strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+
+
+
+  template:
+    metadata:
+      labels:
+        app: core-api
+    spec:
+      #security of pod
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+
+      terminationGracePeriodSeconds: 30
+      containers:
+        - image: sajaldhiman1999/core-api:v1
+          name: core-api
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 200m
+            limits:
+              memory: 350Mi
+              cpu: 250m
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - sleep 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: core-api
+  name: core-api-svc
+  namespace: openkubescope
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: core-api
+  type: ClusterIP

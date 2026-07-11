@@ -14,9 +14,9 @@
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.1079.0",
     "@grpc/grpc-js": "^1.14.4",
-    "@opentelemetry/auto-instrumentations-node": "^0.55.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
-    "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.78.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
+    "@opentelemetry/sdk-node": "^0.220.0",
     "grpc-health-check": "^2.1.0",
     "jszip": "^3.10.1",
     "long": "^5.2.4",

@@ -2,6 +2,8 @@ FROM  dhi.io/node:26-alpine-sfw-ent-dev AS builder
 
 RUN apk add --no-cache protobuf bash
 
+RUN apk update && apk upgrade --no-cache
+
 WORKDIR /web
 
 COPY proto ./proto

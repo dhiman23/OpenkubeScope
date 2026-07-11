@@ -12,15 +12,15 @@ WORKDIR /repo
 
 COPY proto ./proto
 
-COPY /services/rbac-scanner-service/package*.json ./services/rbac-scanner-service/
+COPY /services/report-service/package*.json ./services/report-service/
 
-WORKDIR /repo/services/rbac-scanner-service
+WORKDIR /repo/services/report-service
 
 ENV DHI_NO_SFW=true
 
 RUN npm ci
 
-COPY services/rbac-scanner-service/. .
+COPY services/report-service/. .
 
 RUN npm run build \
     && npm prune --production
@@ -40,9 +40,9 @@ WORKDIR /app
 
 
 
-COPY --from=builder /repo/services/rbac-scanner-service/dist ./dist
-COPY --from=builder /repo/services/rbac-scanner-service/node_modules ./node_modules
-COPY --from=builder /repo/services/rbac-scanner-service/package.json ./
+COPY --from=builder /repo/services/report-service/dist ./dist
+COPY --from=builder /repo/services/report-service/node_modules ./node_modules
+COPY --from=builder /repo/services/report-service/package.json ./
 
 
 RUN chown -R appuser:appgroup /app
@@ -50,6 +50,6 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 
-EXPOSE 50051
+EXPOSE 50052
 
 CMD ["node", "dist/server.js"]
