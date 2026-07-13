@@ -33,7 +33,8 @@ spec:
 
       terminationGracePeriodSeconds: 30
       containers:
-        - image: sajaldhiman1999/core-api:v1
+        - image: sajaldhiman1999/core-api:v3
+          imagePullPolicy: Always
           name: core-api
           ports:
             - containerPort: 8080
@@ -44,6 +45,47 @@ spec:
             limits:
               memory: 350Mi
               cpu: 250m
+          env:
+
+          - name: POSTGRES_HOST
+            value: postgres
+
+          - name: POSTGRES_PORT
+            value: "5432"
+         
+
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_USER
+
+          - name: DATABASE_SSL
+            value: "false"
+
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_DB
+
+          - name: AUTH_JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: AUTH_JWT_SECRET
+
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_PASSWORD
+          
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: DATABASE_URL
 
           securityContext:
             allowPrivilegeEscalation: false

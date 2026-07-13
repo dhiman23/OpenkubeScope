@@ -1,9 +1,15 @@
 // REST client for core-api (the BFF). Replaces direct Supabase calls from the
 // browser. Stores the JWT in localStorage and attaches it as a Bearer token.
 //
-// Base URL is NEXT_PUBLIC_CORE_API_URL (e.g. http://localhost:8080/api).
-
-const BASE_URL = process.env.NEXT_PUBLIC_CORE_API_URL || "http://localhost:8080/api"
+// Base URL defaults to a relative "/api" so the browser always calls back to
+// its own origin — correct behind any single Ingress host that path-routes
+// "/api" to core-api (dev/staging/prod all work unchanged, no per-environment
+// rebuild). NEXT_PUBLIC_CORE_API_URL remains available to override this (e.g.
+// core-api on a separate origin/domain from web), but should not be needed
+// when both sit behind one Ingress. Bare `next dev` (no Ingress in front)
+// relies on the /api rewrite in next.config.mjs to proxy this relative path
+// to core-api locally.
+const BASE_URL = process.env.NEXT_PUBLIC_CORE_API_URL ?? "/api"
 const TOKEN_KEY = "kubescope_token"
 
 export interface AuthUser {

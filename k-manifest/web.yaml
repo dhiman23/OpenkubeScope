@@ -38,7 +38,8 @@ spec:
       terminationGracePeriodSeconds: 30
 
       containers:
-        - image: sajaldhiman1999/web:v1
+        - image: sajaldhiman1999/web:v1 
+          imagePullPolicy: Always
           name: web
           ports:
             - containerPort: 3000
@@ -75,7 +76,7 @@ metadata:
   namespace: openkubescope
 spec:
   ports:
-  - port: 443
+  - port: 80
     protocol: TCP
     targetPort: 3000
   selector:

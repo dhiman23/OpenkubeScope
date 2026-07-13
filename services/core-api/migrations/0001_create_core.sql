@@ -49,18 +49,19 @@ CREATE TABLE IF NOT EXISTS core.user_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- The stripe_* columns this table originally had (stripe_customer_id,
+-- stripe_subscription_id, current_period_end, cancel_at_period_end) and their
+-- index are dropped by 0003_drop_stripe.sql, which always runs immediately
+-- after this file on every boot (migrations re-run idempotently on every
+-- startup, not just once) — so they're omitted here entirely rather than
+-- created and torn down again on every restart.
 CREATE TABLE IF NOT EXISTS core.subscriptions (
   workspace_id UUID PRIMARY KEY REFERENCES core.workspaces(id) ON DELETE CASCADE,
   tier TEXT NOT NULL DEFAULT 'free' CHECK (tier IN ('free', 'unlimited')),
   status TEXT NOT NULL DEFAULT 'inactive',
-  stripe_customer_id TEXT,
-  stripe_subscription_id TEXT,
-  current_period_end TIMESTAMPTZ,
-  cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_core_subscriptions_stripe_sub ON core.subscriptions(stripe_subscription_id);
 
 -- Tracks scan count per workspace for free-tier quota enforcement. The scans
 -- themselves live in rbac-scanner-service's schema; quota/usage is core-api's
