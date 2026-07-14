@@ -83,6 +83,9 @@ spec:
                 name: db-secret
                 key: DATABASE_URL
 
+          - name: SCANNER_SERVICE_ADDR
+            value: scanner-svc:50051
+
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
