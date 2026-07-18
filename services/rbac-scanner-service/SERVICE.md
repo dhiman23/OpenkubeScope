@@ -107,6 +107,34 @@ npm run typecheck
 `npm run gen:proto` regenerates `src/generated/scanner.ts` from
 `proto/scanner.proto` — re-run it whenever the proto changes.
 
+## Container build & run
+
+The `Dockerfile` in this directory is multi-stage (builder installs `protoc`
++ runs `npm run build`; runtime stage copies only `dist/` + production
+`node_modules`, runs as non-root uid 10001).
+
+**Build context must be the repo root, not this directory** — codegen reads
+`proto/scanner.proto` via `../../proto` (see `scripts/gen-proto.sh`), so the
+build needs `proto/` in scope:
+
+```bash
+# from the repo root
+docker build -f services/rbac-scanner-service/Dockerfile -t rbac-scanner-service .
+```
+
+- Base image: `dhi.io/node:26-alpine-sfw-ent-dev` — requires registry auth
+  (`docker login dhi.io`) before building.
+- Exposes gRPC port `50051`.
+- Runtime env required: `DATABASE_URL` (+ `DATABASE_SSL`, `DATABASE_POOL_MAX`
+  optional), and for the async scan flow `SCAN_SQS_QUEUE_URL` + `AWS_REGION`
+  (omit both to run in sync-only mode — no AWS needed). Full list above under
+  Environment variables.
+- No AWS credentials baked into the image — IRSA injects them at runtime
+  in-cluster; nothing extra needed for local `docker run` beyond the vars above
+  (the SQS consumer just won't authenticate without real AWS creds locally).
+- Health check: gRPC Health Checking Protocol on `kubescope.scanner.v1.RbacScannerService`
+  (see Health check section above) — no HTTP endpoint to curl.
+
 ## RPCs (see proto/scanner.proto for full contract)
 
 - `ScanSnapshot` — parse + persist a snapshot, run findings engine, return the `Scan` (synchronous fallback path)

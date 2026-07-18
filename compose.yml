@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kubescope
+    volumes:
+      - ./services/core-api/migrations/0001_create_core.sql:/docker-entrypoint-initdb.d/01-core-0001.sql:ro
+      - ./services/core-api/migrations/0002_admin_bootstrap.sql:/docker-entrypoint-initdb.d/02-core-0002.sql:ro
+      - ./services/core-api/migrations/0003_drop_stripe.sql:/docker-entrypoint-initdb.d/03-core-0003.sql:ro
+      - ./services/rbac-scanner-service/migrations/0001_create_scans.sql:/docker-entrypoint-initdb.d/04-scanner-0001.sql:ro
+      - ./services/rbac-scanner-service/migrations/0002_async_scan_status.sql:/docker-entrypoint-initdb.d/05-scanner-0002.sql:ro
+      - ./services/report-service/migrations/0001_create_reports.sql:/docker-entrypoint-initdb.d/06-report-0001.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  web:
+    image: web
+    container_name: webapp
+    ports:
+      - "3000:3000"
+
+  scanner:
+    image: scanner
+    container_name: rbac-scanner
+    ports:
+      - "50051:50051"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/kubescope
+      DATABASE_SSL: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  coreapi:
+    image: core-apiv1
+    container_name: core-api
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/kubescope
+      DATABASE_SSL: "false"
+      AUTH_JWT_SECRET: local-dev-secret-change-me
+      SCANNER_SERVICE_ADDR: scanner:50051
+      REPORT_SERVICE_ADDR: report:50052
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  reportservice:
+    image: report
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/kubescope
+      DATABASE_SSL: "false"
+      SCANNER_SERVICE_ADDR: scanner:50051
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  pgdata: {}

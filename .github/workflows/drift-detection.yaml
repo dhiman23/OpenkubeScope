@@ -1,0 +1,122 @@
+---
+name: Drift Detection automation
+on:
+    workflow_dispatch:
+     inputs:
+      action:
+        description: Action to perform
+        required: true
+        default: plan
+        type: choice
+        options:
+          - drift-scan
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+
+jobs:
+ 
+  terraform_workflow:
+    name: infra drift detection
+    if: ${{ github.event.inputs.action == 'drift-scan'}}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: setup OIDC connection
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.IAM_ROLE }}
+          aws-region: us-east-1
+          audience: sts.amazonaws.com
+      - name: Verify AWS Connection
+        run: aws sts get-caller-identity
+      
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.14.6
+          terraform_wrapper: false
+
+
+      - name: terraform fmt
+        working-directory: ./infra
+        run: terraform fmt
+      - name: installing JQ
+        run: sudo apt-get install jq -y
+
+      - name: terraform init
+        working-directory: ./infra
+        run: terraform init
+       
+      - name: validating drift detection
+        id: drift-detection
+        working-directory: ./infra
+        run: |
+         set +e
+         set -x
+         terraform plan -detailed-exitcode -no-color -out=tfplan.binary > drift_plan.log 2>&1
+         exit_code=$?
+         echo "exitcode=$exit_code" >> $GITHUB_OUTPUT
+         cat drift_plan.log        
+         exit 0
+       #This is for the puprpose of the drift detection of the IAC 
+      - name: drift analysis
+        if: steps.drift-detection.outputs.exitcode == '2'
+        id: drift-analysis
+        working-directory: ./infra
+        run: |
+         echo "Drift detected in the infrastructure. Please check the drifted resources."
+         terraform show -json tfplan.binary | jq -r '.resource_changes[].address' > drifted_resources.txt
+         echo "resources<<EOF" >> $GITHUB_OUTPUT
+         cat drifted_resources.txt  >> $GITHUB_OUTPUT
+         echo "EOF" >> $GITHUB_OUTPUT
+         echo "##Drift detection summary" >> $GITHUB_STEP_SUMMARY
+         cat drifted_resources.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: terraform plan issue 
+        if: steps.drift-detection.outputs.exitcode == '1'
+        working-directory: ./infra
+        run: |
+         echo "Terraform plan failed. Please check the plan output for errors."
+         cat drift_plan.log
+         
+      - name: slack notification
+        if: steps.drift-detection.outputs.exitcode == '2'
+        uses: slackapi/slack-github-action@v2       
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "#ff0000",
+                  "title": "Drift Detection Alert",
+                  "text": "Drift detected in the infrastructure. Please check the drifted resources.",
+                  "fields": [
+                    {                    
+                      "value": "${{ steps.drift-analysis.outputs.resources }}",
+                      "short": false
+                    }
+                  ]
+                    
+                }
+              ]
+            } 
+      - name: upload drift plan log
+        if: steps.drift-detection.outputs.exitcode == '2'
+        uses: actions/upload-artifact@v5
+        with: 
+          name: drift_artifcats
+          path: ./infra/drift_plan.log
+      - name: upload drift resources
+        if: steps.drift-detection.outputs.exitcode == '2'
+        uses: actions/upload-artifact@v5
+        with:
+          name: drifted_resources
+          path: ./infra/drifted_resources.txt
+
+          
+

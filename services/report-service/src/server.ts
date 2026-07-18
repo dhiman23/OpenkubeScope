@@ -18,7 +18,8 @@ import {
 import { reportRowToProto, scheduledRowToProto } from "./lib/proto-mapper"
 import { reportTypeFromProto, reportFormatFromProto, reportFormatToProto, reportStatusToProto, scheduleFrequencyFromProto } from "./lib/enums"
 import { closeClients } from "./lib/scanner-client"
-import { closePool } from "./lib/db"
+import { closePool, getPool } from "./lib/db"
+import { runMigrations } from "./lib/migrate"
 
 const SERVICE_NAME = "kubescope.report.v1.ReportService"
 
@@ -196,7 +197,16 @@ const handlers: ReportServiceServer = {
   },
 }
 
-function main() {
+async function main() {
+  // Schema must exist before the gRPC server accepts a single call — no
+  // manual `psql -f migrations/...` step required in any environment.
+  try {
+    await runMigrations(getPool())
+  } catch (err) {
+    console.error("Database migration failed, refusing to start:", err)
+    process.exit(1)
+  }
+
   const port = process.env.PORT || "50052"
   const server = new grpc.Server({ "grpc.max_receive_message_length": 32 * 1024 * 1024 })
 

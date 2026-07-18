@@ -1,0 +1,87 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web
+  name: web
+  namespace: openkubescope
+
+
+spec:
+
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+
+
+
+  template:
+    metadata:
+      labels:
+        app: web
+
+
+    spec:
+
+      securityContext:
+        runAsGroup: 10001
+        runAsUser: 10001
+        runAsNonRoot: true
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - image: sajaldhiman1999/web:v1
+          imagePullPolicy: Always
+          name: web
+          ports:
+            - containerPort: 3000
+          env:
+
+
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: 200m
+            limits:
+              memory: 400Mi
+              cpu: 250m
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - sleep 10
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: web
+  name: web-svc
+  namespace: openkubescope
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: web
+  type: ClusterIP

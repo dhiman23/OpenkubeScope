@@ -114,6 +114,34 @@ npm start          # node dist/server.js
 npm run typecheck
 ```
 
+## Container build & run
+
+No `Dockerfile` here yet — follow the same pattern as
+`services/rbac-scanner-service/Dockerfile` (multi-stage: builder installs
+`protoc` + runs `npm run build`; runtime stage copies `dist/` + production
+`node_modules`, non-root user).
+
+**Build context must be the repo root, not this directory** — `scripts/gen-proto.sh`
+reads both `proto/scanner.proto` and `proto/report.proto` via `../../proto`
+(core-api is a gRPC client of both internal services), so both files must be
+in the build context:
+
+```bash
+# from the repo root
+docker build -f services/core-api/Dockerfile -t core-api .
+```
+
+- Exposes HTTP port `8080` — the only service that should be reachable from
+  outside the cluster (browser-facing).
+- Runtime env required: `DATABASE_URL`, `AUTH_JWT_SECRET`, `SCANNER_SERVICE_ADDR`,
+  `REPORT_SERVICE_ADDR`, `CRON_SECRET` (for the cron endpoint), `CORS_ORIGINS`.
+  For the async scan flow, `SCAN_SQS_QUEUE_URL` + `AWS_REGION` (omit both to
+  fall back to the synchronous `ScanSnapshot` RPC — no AWS needed locally).
+  Full list above under Environment variables.
+- No AWS credentials baked into the image — IRSA (SendMessage-only role)
+  injects them at runtime in-cluster.
+- Health check: `GET /healthz` → `{ "status": "ok" }` (plain HTTP, not gRPC).
+
 ## Explicitly out of scope for this service
 
 - Dockerfile, Helm, Terraform, ArgoCD, GitHub Actions, Prometheus/Grafana config, secrets management, Ingress/ALB, HPA — DevOps scope per the project split. core-api wires the OTel SDK; the collector/Grafana side is DevOps.

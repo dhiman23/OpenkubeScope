@@ -13,16 +13,16 @@
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.4",
-    "@opentelemetry/auto-instrumentations-node": "^0.55.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
-    "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.78.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
+    "@opentelemetry/sdk-node": "^0.220.0",
     "grpc-health-check": "^2.1.0",
     "ioredis": "^5.4.2",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "long": "^5.2.4",
     "pg": "^8.13.1",
-    "protobufjs": "^7.4.0"
+    "@bufbuild/protobuf": "^2.12.0"
   },
   "devDependencies": {
     "@types/node": "^22",

@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: scanner
+  name: scanner
+  namespace: openkubescope
+  
+spec:
+  replicas: 2
+  selector:
+    matchLabels: 
+      app: scanner
+
+  # this is for the rolloing update 2 pods with new version will come and 1 pod from old will go down.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+
+  template:
+    metadata:
+      labels:
+        app: scanner
+    spec:
+       #this is for gracefull termination handling of SIGTERM
+      terminationGracePeriodSeconds: 30
+         
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+      containers:
+      - image: sajaldhiman1999/scanner:v3
+        imagePullPolicy: Always
+        name: scanner
+        ports:
+        - containerPort: 50051
+        resources: 
+          requests:
+            memory: 250Mi
+            cpu: 200m
+          limits:
+            memory: 350Mi
+            cpu: 250m
+        env:
+
+          - name: POSTGRES_HOST
+            value: postgres
+
+          - name: POSTGRES_PORT
+            value: "5432"
+         
+
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_USER
+
+          - name: DATABASE_SSL
+            value: "false"
+
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_DB
+
+          - name: AUTH_JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: AUTH_JWT_SECRET
+
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_PASSWORD
+          
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: DATABASE_URL
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          
+          capabilities:
+            drop:
+              - ALL
+      #this will ensure that before stopping pod will perform certain checks like draning the pod.
+        lifecycle:
+          preStop:
+            exec:
+              command:
+               - /bin/sh
+               - -c
+               - sleep 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: scanner
+  name: scanner-svc
+  namespace: openkubescope
+spec:
+  ports:
+  - port: 50051
+    protocol: TCP
+    targetPort: 50051
+  selector:
+    app: scanner
+  type: ClusterIP
+
+              
+        
+   
+      
+     
+        
+
