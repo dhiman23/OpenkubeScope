@@ -14,7 +14,7 @@ spec:
   selector:
     matchLabels:
       app: web
-  
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -38,11 +38,14 @@ spec:
       terminationGracePeriodSeconds: 30
 
       containers:
-        - image: sajaldhiman1999/web:v1 
+        - image: sajaldhiman1999/web:v1
           imagePullPolicy: Always
           name: web
           ports:
             - containerPort: 3000
+          env:
+
+
           resources:
             requests:
               memory: 300Mi
