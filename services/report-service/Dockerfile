@@ -41,6 +41,7 @@ WORKDIR /app
 
 
 COPY --from=builder /repo/services/report-service/dist ./dist
+COPY --from=builder /repo/services/report-service/migrations ./migrations
 COPY --from=builder /repo/services/report-service/node_modules ./node_modules
 COPY --from=builder /repo/services/report-service/package.json ./
 

@@ -29,6 +29,7 @@ RUN addgroup -g 10001 -S appgroup && \
 WORKDIR /app
 
 COPY --from=builder /web/services/core-api/dist ./dist
+COPY --from=builder /web/services/core-api/migrations ./migrations
 COPY --from=builder /web/services/core-api/node_modules ./node_modules
 COPY --from=builder /web/services/core-api/package.json ./
 

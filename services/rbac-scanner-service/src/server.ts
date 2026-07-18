@@ -10,6 +10,8 @@ import { createScanFromBuffer } from "./lib/rbac-engine"
 import { createPendingScan, deleteScan, getScan, listLatestScansByCluster, listScans, saveScan } from "./lib/scan-repository"
 import { scanToProto } from "./lib/proto-mapper"
 import { startSqsConsumer, stopSqsConsumer } from "./lib/sqs-consumer"
+import { runMigrations } from "./lib/migrate"
+import { getPool } from "./lib/db"
 
 const SERVICE_NAME = "kubescope.scanner.v1.RbacScannerService"
 
@@ -118,7 +120,16 @@ function toMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Internal error"
 }
 
-function main() {
+async function main() {
+  // Schema must exist before the gRPC server accepts a single call — no
+  // manual `psql -f migrations/...` step required in any environment.
+  try {
+    await runMigrations(getPool())
+  } catch (err) {
+    console.error("Database migration failed, refusing to start:", err)
+    process.exit(1)
+  }
+
   const port = process.env.PORT || "50051"
   const server = new grpc.Server()
 

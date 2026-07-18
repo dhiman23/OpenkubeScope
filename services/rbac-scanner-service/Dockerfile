@@ -41,6 +41,7 @@ WORKDIR /app
 
 
 COPY --from=builder /repo/services/rbac-scanner-service/dist ./dist
+COPY --from=builder /repo/services/rbac-scanner-service/migrations ./migrations
 COPY --from=builder /repo/services/rbac-scanner-service/node_modules ./node_modules
 COPY --from=builder /repo/services/rbac-scanner-service/package.json ./
 

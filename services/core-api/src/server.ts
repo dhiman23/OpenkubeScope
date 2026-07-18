@@ -12,7 +12,8 @@ import { reportsRouter } from "./routes/reports"
 import { subscriptionRouter } from "./routes/subscription"
 import { cronRouter } from "./routes/cron"
 import { closeClients } from "./lib/grpc-clients"
-import { closePool } from "./db"
+import { closePool, getPool } from "./db"
+import { runMigrations } from "./lib/migrate"
 import { ensureBootstrapAdmin } from "./repositories/users"
 
 const app = express()
@@ -40,20 +41,49 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 })
 
 const port = Number(process.env.PORT || 8080)
-const server = app.listen(port, () => {
-  console.log(`core-api listening on :${port}`)
-  // Jenkins-style first-boot seed of the admin/admin account.
-  ensureBootstrapAdmin().catch((err) => console.error("Bootstrap admin seed failed:", err))
-})
+
+// Ensure the schema exists (fresh DB, fresh RDS instance, etc.) and the
+// bootstrap admin is seeded before this service accepts any traffic — no
+// manual `psql -f migrations/...` step required in any environment.
+async function start() {
+  try {
+    await runMigrations(getPool())
+  } catch (err) {
+    console.error("Database migration failed, refusing to start:", err)
+    process.exit(1)
+  }
+
+  // Bootstrap-admin seeding only runs after migrations succeed, and is kept
+  // in its own module (repositories/users.ts) — migrate.ts guarantees schema,
+  // this seeds data. Failure here is logged, not fatal: the schema is sound,
+  // and seeding is retried implicitly (it's an idempotent INSERT ... WHERE NOT
+  // EXISTS) on next restart if this transient failure was e.g. a DB hiccup.
+  try {
+    await ensureBootstrapAdmin()
+  } catch (err) {
+    console.error("Bootstrap admin seed failed:", err)
+  }
+
+  server = app.listen(port, () => {
+    console.log(`core-api listening on :${port}`)
+  })
+}
+
+let server: ReturnType<typeof app.listen>
+start()
 
 async function shutdown() {
   console.log("core-api shutting down")
-  server.close(async () => {
+  // server may not exist yet if SIGTERM arrives while migrations/bootstrap
+  // are still running (e.g. a rolling restart hitting a slow migration).
+  const finish = async () => {
     closeClients()
     await closePool()
     await shutdownTelemetry()
     process.exit(0)
-  })
+  }
+  if (server) server.close(() => finish())
+  else await finish()
 }
 process.on("SIGTERM", shutdown)
 process.on("SIGINT", shutdown)
