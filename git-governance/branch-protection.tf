@@ -45,4 +45,3 @@ resource "github_repository_ruleset" "openkubescope_main_ruleset" {
     }
   }
 }
-#this is imp
