@@ -19,7 +19,7 @@ resource "github_repository_ruleset" "openkubescope_main_ruleset" {
     update                  = true
     deletion                = false
     required_linear_history = true
-    required_signatures     = true
+    required_signatures     = false
 
 
     pull_request {
