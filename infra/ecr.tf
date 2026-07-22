@@ -13,7 +13,7 @@ resource "aws_ecr_repository" "my_repo" {
   }
 
   tags = {
-    Name = "openkubescope-ecr"
+    Name = "openkubescope-ecr" 
     Environment = "prod"
   }
-}
+} 
