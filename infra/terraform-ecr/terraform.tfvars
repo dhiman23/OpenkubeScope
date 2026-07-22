@@ -1,0 +1,1 @@
+repository_name = "openkubescope-ecr"
