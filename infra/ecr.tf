@@ -1,6 +1,6 @@
 resource "aws_ecr_repository" "my_repo" {
 
-  name = var.repository_name
+  name = openkubescope
 
   image_tag_mutability = "MUTABLE"
 
@@ -14,6 +14,6 @@ resource "aws_ecr_repository" "my_repo" {
 
   tags = {
     Name = "openkubescope-ecr"
-    Environment = "Dev"
+    Environment = "prod"
   }
 }
