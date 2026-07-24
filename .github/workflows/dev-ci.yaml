@@ -5,10 +5,9 @@ on:
     branches:
         - dev
 jobs:
-    #this is to detect the changes dynamiclly
+    #this is to detect the changes dynamiclly test
   detect:
     runs-on: ubuntu-latest
-
     steps:
      - name: Checkout code
        uses: actions/checkout@v4
