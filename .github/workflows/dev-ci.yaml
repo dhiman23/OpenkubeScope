@@ -1,0 +1,106 @@
+---
+name: code scan merge ci
+on:
+  pull_request:
+    branches:
+        - dev
+jobs:
+    #this is to detect the changes dynamiclly
+  detect:
+    runs-on: ubuntu-latest
+
+    steps:
+     - name: Checkout code
+       uses: actions/checkout@v4
+       with:
+          fetch-depth: 0
+       #filtering out the duplicate services
+     - id: detect
+       run: |
+
+        SERVICES=$( git diff --name-only HEAD~1 HEAD | grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c .)
+        echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
+
+    outputs:
+        services: ${{ steps.detect.outputs.services }}
+
+  code-scan:
+    # in this step we are push the detected servcies to the matrix
+    needs: detect
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          service: ${{ fromJson(needs.detect.outputs.services) }}
+
+    name: Build & test ${{ matrix.service }}
+    if: ${{ needs.detect.outputs.services != '[]' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
+
+      - name: gitleaks scan
+        uses: gitleaks/gitleaks-action@v3
+
+
+      - name: set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: install dependencies
+        run: |
+          cd services/${{ matrix.service}}
+          npm ci
+
+      - name: Build
+        run: |
+          cd services/${{matrix.service }}
+          npm run build
+
+      - name: Run unit Tests
+        run: |
+          cd services/${{ matrix.service }}
+          npm test
+
+  code-quality:
+
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: checkout code
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: SonarQube Scan
+          uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+          env:
+           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+        - name: trivy SBOM
+          id: SBOM
+          uses: aquasecurity/trivy-action@v0.36.0
+          with:
+            scan-type: 'fs'
+            format: cyclonedx
+            scan-ref: '.'
+            cache: 'false'
+            output: 'sbom.cdx.json'
+
+        - name: SBOM scan
+          id: scan_sbom
+          uses: aquasecurity/trivy-action@v0.36.0
+          with:
+            scan-type: 'sbom'
+            scan-ref: 'sbom.cdx.json'
+            severity: CRITICAL,HIGH
+            exit-code: '1'
+            ignore-unfixed: true
+
+        - name: Upload SBOM Artifact
+          uses: actions/upload-artifact@v4
+          with:
+           name: repo-sbom
+           path: 'sbom.cdx.json'
