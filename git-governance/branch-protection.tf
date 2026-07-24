@@ -16,6 +16,7 @@ resource "github_repository_ruleset" "openkubescope_main_ruleset" {
 
   rules {
     creation                = false
+
     update                  = true
     deletion                = false
     required_linear_history = true
@@ -45,4 +46,5 @@ resource "github_repository_ruleset" "openkubescope_main_ruleset" {
     }
   }
 }
+#this is imp sajal
 #this is imp
