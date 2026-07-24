@@ -1,10 +1,10 @@
 ---
 name: Infra Code Scanning
 on:
-  push:
+  pull_request:
     branches:
       - infra
-    
+
 
 permissions:
   security-events: write
@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v4
         with:
@@ -31,20 +31,20 @@ jobs:
       - name: terraform init
         working-directory: ./infra
         run: terraform init
-      
+
       - name: tf lint
         run: |
           curl -L https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-        
+
       - name: initialize tflint
         working-directory: ./infra
         run: tflint --init
-      
+
       - name: Run tflint
         continue-on-error: true
         working-directory: ./infra
         run: tflint
-     
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v6
         with:
@@ -55,11 +55,11 @@ jobs:
         uses: bridgecrewio/checkov-action@master
         with:
           directory: ./infra
-          framework: terraform 
-          
+          framework: terraform
+
           output_format: cli,sarif
           output_file_path: console,results.sarif
-        
+
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v4
@@ -69,7 +69,7 @@ jobs:
 
       - name: slack notification
         if: success() || failure()
-        uses: slackapi/slack-github-action@v2       
+        uses: slackapi/slack-github-action@v2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK }}
           webhook-type: incoming-webhook
@@ -80,7 +80,7 @@ jobs:
                   "color": "#0256ff",
                   "title": "scan done",
                   "text": "scan done on the infrastructure. Please check the scaned pipeline.",
-                    
+
                 }
               ]
-            } 
+            }
