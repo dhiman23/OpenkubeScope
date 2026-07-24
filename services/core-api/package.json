@@ -10,11 +10,12 @@
     "dev": "npm run gen:proto && ts-node src/server.ts",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts,.js"
-
+    "lint": "eslint src --ext .ts,.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.1079.0",
+    "@bufbuild/protobuf": "^2.12.0",
     "@grpc/grpc-js": "^1.14.4",
     "@opentelemetry/auto-instrumentations-node": "^0.78.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
@@ -25,8 +26,7 @@
     "jsonwebtoken": "^9.0.3",
     "long": "^5.2.4",
     "multer": "^2.2.0",
-    "pg": "^8.13.1",
-    "@bufbuild/protobuf": "^2.12.0"
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -37,7 +37,7 @@
     "@types/pg": "^8.11.10",
     "ts-node": "^10.9.2",
     "ts-proto": "^2.11.8",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
-
 }
