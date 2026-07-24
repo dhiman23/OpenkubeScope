@@ -5,7 +5,7 @@ on:
     branches:
         - dev
 jobs:
-    #this is to detect the changes dynamiclly test
+    #this is to detect the changes dynamiclly test1
   detect:
     runs-on: ubuntu-latest
     steps:
