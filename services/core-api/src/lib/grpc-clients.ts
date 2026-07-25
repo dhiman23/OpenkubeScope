@@ -7,9 +7,17 @@ import * as scanner from "../generated/scanner"
 import { ReportServiceClient } from "../generated/report"
 import * as report from "../generated/report"
 
+// Built on first use, not at import time, so this module stays importable
+// without the backing services being reachable. Channels are long-lived and
+// reused across requests — a gRPC channel multiplexes concurrent calls, so one
+// per service is enough.
 let scannerClient: RbacScannerServiceClient | null = null
 let reportClient: ReportServiceClient | null = null
 
+// createInsecure(): no TLS on the wire. These addresses resolve to in-cluster
+// ClusterIP Services (scanner-svc:50051, report-svc:50052 — see the SCANNER_/
+// REPORT_SERVICE_ADDR env in k-manifest/core-api.yaml), so traffic never leaves
+// the cluster network. The localhost fallbacks are for docker-compose/local dev.
 function scannerC(): RbacScannerServiceClient {
   if (!scannerClient) {
     scannerClient = new RbacScannerServiceClient(process.env.SCANNER_SERVICE_ADDR || "localhost:50051", grpc.credentials.createInsecure())
@@ -56,6 +64,8 @@ export const reportApi = {
   runDueScheduledReports: (req: report.RunDueScheduledReportsRequest) => call<report.RunDueScheduledReportsResponse>((cb) => reportC().runDueScheduledReports(req, cb)),
 }
 
+// Called from the SIGTERM path in server.ts. Nulls both refs so anything that
+// runs after shutdown rebuilds a live channel rather than reusing a closed one.
 export function closeClients(): void {
   scannerClient?.close()
   reportClient?.close()
