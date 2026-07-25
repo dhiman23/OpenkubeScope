@@ -18,6 +18,8 @@ import { ensureBootstrapAdmin } from "./repositories/users"
 
 const app = express()
 
+// CORS origins come from env so each environment (local/dev/prod) can allow its
+// own frontend host without a code change.
 const corsOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000").split(",").map((s) => s.trim())
 app.use(cors({ origin: corsOrigins, credentials: true }))
 
