@@ -17,6 +17,7 @@ jobs:
      - id: detect
        run: |
         set -xv
+        git diff --name-only HEAD~1 HEAD
         SERVICES=$( git diff --name-only HEAD~1 HEAD | grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c .)
         echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
 
@@ -98,7 +99,7 @@ jobs:
             ignore-unfixed: true
 
         - name: Upload SBOM Artifact
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v6
           with:
            name: repo-sbom
            path: 'sbom.cdx.json'
