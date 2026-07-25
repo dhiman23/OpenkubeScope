@@ -18,6 +18,8 @@ import { ensureBootstrapAdmin } from "./repositories/users"
 
 const app = express()
 
+// CORS origins come from env so each environment (local/dev/prod) can allow its
+// own frontend host without a code change.
 const corsOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000").split(",").map((s) => s.trim())
 app.use(cors({ origin: corsOrigins, credentials: true }))
 
@@ -25,8 +27,12 @@ app.use(cors({ origin: corsOrigins, credentials: true }))
 // HTTP so it exposes a plain endpoint for K8s probes / ALB health checks.)
 app.get("/healthz", (_req, res) => res.json({ status: "ok", service: "core-api" }))
 
+// 1mb cap: RBAC snapshot uploads go through multer as multipart, not JSON, so
+// no legitimate JSON body comes close to this.
 app.use(express.json({ limit: "1mb" }))
 
+// Several routers share the /api/workspaces prefix and are distinguished by
+// their own sub-paths; order matters only within a router, not between them.
 app.use("/api/auth", authRouter)
 app.use("/api/workspaces", workspacesRouter)
 app.use("/api/workspaces", scansRouter) // /:workspaceId/scans...
@@ -34,12 +40,14 @@ app.use("/api/workspaces", reportsRouter) // /:workspaceId/reports..., scheduled
 app.use("/api/billing", subscriptionRouter) // /:workspaceId/subscription (read-only)
 app.use("/api/cron", cronRouter)
 
-// Fallback error handler.
+// Fallback error handler. Must be registered last and keep all four params —
+// Express identifies error middleware by arity, not by position alone.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error("Unhandled error:", err)
   res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" })
 })
 
+// 8080 default matches the containerPort the K8s manifests probe.
 const port = Number(process.env.PORT || 8080)
 
 // Ensure the schema exists (fresh DB, fresh RDS instance, etc.) and the
