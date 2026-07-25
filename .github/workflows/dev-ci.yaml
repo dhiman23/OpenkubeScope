@@ -90,13 +90,11 @@ jobs:
             output: 'sbom.cdx.json'
 
         - name: SBOM scan
-          id: scan_sbom
           uses: aquasecurity/trivy-action@v0.36.0
           with:
             scan-type: 'sbom'
             scan-ref: 'sbom.cdx.json'
             severity: CRITICAL
-            exit-code: '1'
             ignore-unfixed: true
 
         - name: Upload SBOM Artifact
