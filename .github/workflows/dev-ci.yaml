@@ -18,7 +18,7 @@ jobs:
        run: |
         set -xv
         git diff --name-only HEAD~1 HEAD
-        SERVICES=$( git diff --name-only HEAD~1 HEAD | grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c .)
+        SERVICES=$( git diff origin/${{ github.base_ref }}...HEAD | grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c .)
         echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
 
     outputs:
@@ -103,6 +103,7 @@ jobs:
             scan-type: 'sbom'
             scan-ref: 'sbom.cdx.json'
             severity: CRITICAL
+            exit-code: '1'
             ignore-unfixed: true
 
         - name: Upload SBOM Artifact
