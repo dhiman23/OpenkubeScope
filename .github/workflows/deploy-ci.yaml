@@ -1,6 +1,9 @@
 ---
 name: Build Martix CI
 on:
+  push:
+    branches:
+        - dev
   workflow_dispatch:
     inputs:
       action:
@@ -9,9 +12,7 @@ on:
         type: choice
         options:
           - Run_Deploy
-  push:
-    branches:
-        - dev
+
 jobs:
   detect:
     if: ${{ github.event.inputs.action == 'Run_CI' }}
