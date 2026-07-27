@@ -15,7 +15,7 @@ on:
 
 jobs:
   detect:
-    if: ${{ github.event.inputs.action == 'Run_CI' }}
+    if: ${{ github.event.inputs.action == 'Run_Deploy' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
