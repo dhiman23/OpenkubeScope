@@ -10,7 +10,7 @@ directly via `pg`.
 ## Runtime
 
 - Node.js >= 20 (LTS), TypeScript 5
-- Protocol: gRPC (`@grpc/grpc-js`), generated from [`proto/report.proto`](../../proto/report.proto) **and** [`proto/scanner.proto`](../../proto/scanner.proto) via `ts-proto`. This service is a gRPC **server** for report.proto and a gRPC **client** of scanner.proto.
+- Protocol: gRPC (`@grpc/grpc-js`), generated from [`proto/report.proto`](proto/report.proto) **and** [`rbac-scanner-service/proto/scanner.proto`](../rbac-scanner-service/proto/scanner.proto) via `ts-proto`. This service **owns** `report.proto` (gRPC server) and is a gRPC **client** of `scanner.proto`, which it reads from rbac-scanner-service. Note `report.proto` has `import "scanner.proto"`, resolved via a second `--proto_path`.
 - Requires `protoc` on PATH at build/dev time for codegen.
 - Database: AWS RDS Postgres, raw SQL via `pg`. Owns the `report` schema only — see [`migrations/0001_create_reports.sql`](migrations/0001_create_reports.sql). `workspace_id` and `scan_ids` are plain UUID columns, no cross-schema FKs.
 - PDF rendering: `jspdf` + `jspdf-autotable`, run server-side (no browser).
@@ -83,7 +83,7 @@ No `Dockerfile` here yet — when you write one, follow the pattern used in
 `node_modules`, non-root user).
 
 **Build context must be the repo root, not this directory** — `scripts/gen-proto.sh`
-reads `proto/scanner.proto` *and* `proto/report.proto` via `../../proto` (this
+reads `proto/report.proto` from this directory *and* `rbac-scanner-service/proto/scanner.proto` (this
 service is a gRPC server for report.proto and a client of scanner.proto), so
 both files must be in the build context:
 
