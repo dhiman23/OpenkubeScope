@@ -9,7 +9,7 @@ no Supabase SDK.
 ## Runtime
 
 - Node.js >= 20 (LTS), TypeScript 5
-- Protocol: gRPC (`@grpc/grpc-js`), generated from [`proto/scanner.proto`](../../proto/scanner.proto) via `ts-proto`
+- Protocol: gRPC (`@grpc/grpc-js`), generated from [`proto/scanner.proto`](proto/scanner.proto) via `ts-proto`. This service **owns** `scanner.proto`; core-api and report-service read it from here.
 - Requires `protoc` on PATH at build/dev time for codegen (e.g. `brew install protobuf`)
 - Database: AWS RDS Postgres, raw SQL via `pg` (`node-postgres`). This service owns the `scanner` schema only — see [`migrations/0001_create_scans.sql`](migrations/0001_create_scans.sql). `workspace_id` is a plain UUID column, not a foreign key into core-api's `workspaces` table — schemas are isolated, no cross-schema FKs. core-api must verify workspace ownership before calling this service.
 
@@ -114,7 +114,7 @@ The `Dockerfile` in this directory is multi-stage (builder installs `protoc`
 `node_modules`, runs as non-root uid 10001).
 
 **Build context must be the repo root, not this directory** — codegen reads
-`proto/scanner.proto` via `../../proto` (see `scripts/gen-proto.sh`), so the
+`proto/scanner.proto` from this directory (see `scripts/gen-proto.sh`), so the
 build needs `proto/` in scope:
 
 ```bash

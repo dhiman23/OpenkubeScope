@@ -16,9 +16,8 @@ jobs:
        #filtering out the duplicate services test 1
      - id: detect
        run: |
-        SERVICES=$( git diff origin/${{ github.base_ref }}...HEAD | grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c .)
+        SERVICES=$( git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c . )
         echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
-
     outputs:
         services: ${{ steps.detect.outputs.services }}
 
@@ -43,8 +42,8 @@ jobs:
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: set up node1
-        uses: actions/setup-node@v4
+      - name: set up node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 #v4
         with:
           node-version: 22
 

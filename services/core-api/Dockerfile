@@ -6,7 +6,11 @@ RUN apk update && apk upgrade --no-cache
 
 WORKDIR /web
 
-COPY proto ./proto
+# core-api owns no proto — it is a gRPC client of both services and reads each
+# contract from its owning service. scripts/gen-proto.sh resolves these via
+# $SERVICE_DIR/../<service>/proto, so both must land as sibling directories.
+COPY services/rbac-scanner-service/proto ./services/rbac-scanner-service/proto
+COPY services/report-service/proto ./services/report-service/proto
 
 COPY  /services/core-api/package*.json ./services/core-api/
 

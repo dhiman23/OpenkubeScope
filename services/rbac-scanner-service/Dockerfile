@@ -2,7 +2,7 @@
 FROM dhi.io/node:26-alpine-sfw-ent-dev AS builder
 
 # protoc is only needed to generate src/generated/scanner.ts at build time.
-RUN apk add --no-cache protobuf 
+RUN apk add --no-cache protobuf
 
 RUN apk add --no-cache bash
 
@@ -10,9 +10,9 @@ RUN apk update && apk upgrade --no-cache
 
 WORKDIR /repo
 
-COPY proto ./proto
+COPY services/rbac-scanner-service/proto/scanner.proto ./proto
 
-COPY /services/rbac-scanner-service/package*.json ./services/rbac-scanner-service/
+COPY services/rbac-scanner-service/package*.json ./services/rbac-scanner-service/
 
 WORKDIR /repo/services/rbac-scanner-service
 
@@ -30,7 +30,7 @@ RUN npm run build \
 FROM dhi.io/node:26-alpine-sfw-ent-dev AS runtime
 
 RUN addgroup -g 10001 -S appgroup && \
-  adduser -u 10001 -S appuser -G appgroup 
+  adduser -u 10001 -S appuser -G appgroup
 
 
 
@@ -44,6 +44,7 @@ COPY --from=builder /repo/services/rbac-scanner-service/dist ./dist
 COPY --from=builder /repo/services/rbac-scanner-service/migrations ./migrations
 COPY --from=builder /repo/services/rbac-scanner-service/node_modules ./node_modules
 COPY --from=builder /repo/services/rbac-scanner-service/package.json ./
+COPY --from=builder /repo/services/rbac-scanner-service/proto/scanner.proto ./proto
 
 
 RUN chown -R appuser:appgroup /app
