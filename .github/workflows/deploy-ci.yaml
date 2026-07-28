@@ -2,21 +2,9 @@
 name: Build Martix CI
 on:
   push:
-    branches:
-        - dev
-
   workflow_dispatch:
-    inputs:
-      action:
-        description: select action
-        required: true
-        type: choice
-        options:
-          - Run_Deploy
-
 jobs:
   detect:
-    if: ${{ github.event_name == 'push' ||  github.event.inputs.action == 'Run_Deploy' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
