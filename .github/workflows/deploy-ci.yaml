@@ -1,21 +1,9 @@
 ---
 name: Build Martix CI
 on:
-  push:
-    branches:
-        - dev
   workflow_dispatch:
-    inputs:
-      action:
-        description: select action
-        required: true
-        type: choice
-        options:
-          - Run_Deploy
-
 jobs:
   detect:
-    if: ${{ github.event.inputs.action == 'Run_Deploy' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -23,10 +11,9 @@ jobs:
         with:
           fetch-depth: 0
       - id: detect
-        run: >
-          
-          SERVICES=$( git diff --name-only HEAD~1 HEAD | grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c .)
+        run: |
 
+          SERVICES=$( git diff --name-only ${{ github.event.before }} ${{ github.sha }}| grep '^services/' | awk -F '/' '{ print $2 }' | sort -u | jq -R . | jq -s -c .)
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
     outputs:
       services: ${{ steps.detect.outputs.services }}
@@ -52,7 +39,7 @@ jobs:
         run: |
           cd services/${{ matrix.service }}
 
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}${{ github.sha }} .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }} .
       - name: trivy sbom creation
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -72,4 +59,4 @@ jobs:
           ignore-unfixed: true
       - name: docker image push
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/{{ matrix.service }}:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
