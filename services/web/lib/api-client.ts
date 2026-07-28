@@ -1,3 +1,4 @@
+// CI pipeline check — comment-only, no behaviour change.
 // REST client for core-api (the BFF). Replaces direct Supabase calls from the
 // browser. Stores the JWT in localStorage and attaches it as a Bearer token.
 //

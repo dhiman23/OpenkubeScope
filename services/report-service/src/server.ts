@@ -1,3 +1,4 @@
+// CI pipeline check — comment-only, no behaviour change.
 // Telemetry first so auto-instrumentation can patch grpc/pg before they load.
 import { startTelemetry, shutdownTelemetry } from "./telemetry"
 startTelemetry()
