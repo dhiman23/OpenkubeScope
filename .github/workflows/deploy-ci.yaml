@@ -20,13 +20,13 @@ jobs:
     steps:
       - id: matrix
         run: |
-          if [ "${{ github.event.inputs.service }}" = "ALL" ]; then
+          if [ "${{ github.event.inputs.action }}" = "ALL" ]; then
             echo 'services=["core-api","rbac-scanner-service","report-service","web"]' >> "$GITHUB_OUTPUT"
           else
-            echo 'services=["${{ github.event.inputs.service }}"]' >> "$GITHUB_OUTPUT"
+            echo 'services=["${{ github.event.inputs.action }}"]' >> "$GITHUB_OUTPUT"
           fi
     outputs:
-        services: ${{ steps.matrix.outputs.services }}
+        services: ${{ steps.matrix.outputs.servcies }}
 
   build-scan-push:
     # in this step we are push the detected servcies to the matrix
