@@ -6,9 +6,10 @@ on:
       action:
         description: select action
         required: true
+        default: plan
         type: choice
         options:
-          - core-api-service
+          - core-api
           - rbac-scanner-service
           - web
           - report-service
@@ -26,10 +27,10 @@ jobs:
             echo 'services=["${{ github.event.inputs.action }}"]' >> "$GITHUB_OUTPUT"
           fi
     outputs:
-        services: ${{ steps.matrix.outputs.servcies }}
+        services: ${{ steps.matrix.outputs.services }}
 
   build-scan-push:
-    # in this step we are push the detected servcies to the matrix
+    # in this step we are push the detected services to the matrix
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
