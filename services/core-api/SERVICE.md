@@ -11,7 +11,7 @@ monolith's Supabase Auth (now `core.users` + JWT) and the API routes under
 - Node.js >= 20 (LTS), TypeScript 5
 - HTTP framework: Express 5
 - Database: AWS RDS Postgres via `pg`, owns the `core` schema — see [`migrations/0001_create_core.sql`](migrations/0001_create_core.sql)
-- gRPC **client** of both internal services; stubs generated from [`proto/scanner.proto`](../../proto/scanner.proto) + [`proto/report.proto`](../../proto/report.proto) via `ts-proto` (needs `protoc` at build time)
+- gRPC **client** of both internal services; stubs generated from [`rbac-scanner-service/proto/scanner.proto`](../rbac-scanner-service/proto/scanner.proto) + [`report-service/proto/report.proto`](../report-service/proto/report.proto) via `ts-proto` (needs `protoc` at build time). core-api owns no proto — each contract is read from the service that owns it.
 - Auth: HMAC-signed JWTs (`jsonwebtoken`), passwords hashed with `bcryptjs`
 
 ## Port
@@ -122,7 +122,7 @@ No `Dockerfile` here yet — follow the same pattern as
 `node_modules`, non-root user).
 
 **Build context must be the repo root, not this directory** — `scripts/gen-proto.sh`
-reads both `proto/scanner.proto` and `proto/report.proto` via `../../proto`
+reads both `rbac-scanner-service/proto/scanner.proto` and `report-service/proto/report.proto`
 (core-api is a gRPC client of both internal services), so both files must be
 in the build context:
 

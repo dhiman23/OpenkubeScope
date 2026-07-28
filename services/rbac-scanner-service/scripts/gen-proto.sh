@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SERVICE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROTO_DIR="$SERVICE_DIR/../../proto"
+PROTO_DIR="$SERVICE_DIR/proto"
 OUT_DIR="$SERVICE_DIR/src/generated"
 
 mkdir -p "$OUT_DIR"

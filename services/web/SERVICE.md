@@ -6,7 +6,7 @@ access. See `lib/api-client.ts` for the base URL wiring.
 ## Runtime
 
 - Node.js >= 20 (LTS), Next.js (App Router)
-- Package manager: pnpm
+- Package manager: npm (`package-lock.json`; the image builds with `npm ci`)
 
 ## Port
 
@@ -28,10 +28,10 @@ that becomes a problem.
 ## Build / run
 
 ```bash
-pnpm install
-pnpm dev      # local dev server
-pnpm build     # production build -> .next/
-pnpm start      # serve the production build
+npm ci
+npm run dev      # local dev server
+npm run build    # production build -> .next/
+npm start        # serve the production build
 ```
 
 ## Container build & run
@@ -46,7 +46,7 @@ docker build --build-arg NEXT_PUBLIC_CORE_API_URL=https://api.kubescope.example/
 ```
 
 - Pass `NEXT_PUBLIC_CORE_API_URL` as a `--build-arg` (and `ARG`/`ENV` it in the
-  Dockerfile before `pnpm build`) — setting it only as a runtime `ENV`/K8s env
+  Dockerfile before `npm run build`) — setting it only as a runtime `ENV`/K8s env
   var will not work, per the note above.
 - Exposes HTTP port `3000`.
 - Consider Next.js `output: "standalone"` in `next.config.mjs` to keep the

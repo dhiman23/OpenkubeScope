@@ -1,0 +1,74 @@
+---
+name: Build Martix CI
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: select action
+        required: true
+        default: ALL
+        type: choice
+        options:
+          - core-api
+          - rbac-scanner-service
+          - web
+          - report-service
+          - ALL
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - id: matrix
+        run: |
+          if [ "${{ github.event.inputs.action }}" = "ALL" ]; then
+            echo 'services=["core-api","rbac-scanner-service","report-service","web"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'services=["${{ github.event.inputs.action }}"]' >> "$GITHUB_OUTPUT"
+          fi
+    outputs:
+        services: ${{ steps.matrix.outputs.services }}
+
+  build-scan-push:
+    # in this step we are push the detected services to the matrix
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          service: ${{ fromJson(needs.prepare.outputs.services) }}
+
+    name: Build & test ${{ matrix.service }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2
+        with:
+          fetch-depth: 0
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build 
+        run: |
+          docker build -f  services/${{ matrix.service }}/Dockerfile \
+          -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }} .
+      - name: trivy sbom creation
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha}}
+          format: cyclonedx
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: true
+          output: imgsbom.cdx.json
+      - name: SBOM image scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: sbom
+          scan-ref: imgsbom.cdx.json
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: docker image push
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }}

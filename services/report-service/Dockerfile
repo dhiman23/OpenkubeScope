@@ -2,7 +2,7 @@
 FROM dhi.io/node:26-alpine-sfw-ent-dev AS builder
 
 # protoc is only needed to generate src/generated/scanner.ts at build time.
-RUN apk add --no-cache protobuf 
+RUN apk add --no-cache protobuf
 
 RUN apk add --no-cache bash
 
@@ -10,7 +10,11 @@ RUN apk update && apk upgrade --no-cache
 
 WORKDIR /repo
 
-COPY proto ./proto
+# report.proto is this service's own and arrives with the bulk service COPY
+# below. scanner.proto is owned by rbac-scanner-service and must be copied in
+# as a sibling directory, because scripts/gen-proto.sh resolves it via
+# $SERVICE_DIR/../rbac-scanner-service/proto (report.proto imports it).
+COPY services/rbac-scanner-service/proto ./services/rbac-scanner-service/proto
 
 COPY /services/report-service/package*.json ./services/report-service/
 
@@ -30,7 +34,7 @@ RUN npm run build \
 FROM dhi.io/node:26-alpine-sfw-ent-dev AS runtime
 
 RUN addgroup -g 10001 -S appgroup && \
-  adduser -u 10001 -S appuser -G appgroup 
+  adduser -u 10001 -S appuser -G appgroup
 
 
 
@@ -44,6 +48,7 @@ COPY --from=builder /repo/services/report-service/dist ./dist
 COPY --from=builder /repo/services/report-service/migrations ./migrations
 COPY --from=builder /repo/services/report-service/node_modules ./node_modules
 COPY --from=builder /repo/services/report-service/package.json ./
+COPY --from=builder /repo/services/report-service/proto/report.proto ./proto
 
 
 RUN chown -R appuser:appgroup /app
