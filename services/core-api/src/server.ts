@@ -1,3 +1,4 @@
+// CI pipeline check — comment-only, no behaviour change.
 // Telemetry must be initialized before anything else so auto-instrumentation
 // can patch http/express/pg/grpc.
 import { startTelemetry, shutdownTelemetry } from "./telemetry"
