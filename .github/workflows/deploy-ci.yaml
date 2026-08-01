@@ -3,6 +3,9 @@ name: Build Martix CI
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: Branch
+        required: true
       action:
         description: select action
         required: true
@@ -40,9 +43,10 @@ jobs:
     name: Build & test ${{ matrix.service }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7
         with:
           fetch-depth: 0
+          ref: ${{ inputs.branch }}
       - name: Log in to Docker Hub
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
         with:
