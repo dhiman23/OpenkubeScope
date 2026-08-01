@@ -50,9 +50,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build 
         run: |
-          cd services/${{ matrix.service }}
-
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }} .
+           docker build -t ${{ secrets.DOCKER_USERNAME }}/kubescope:${{ matrix.service }} -f ${{ matrix.service }}/Dockerfile .
       - name: trivy sbom creation
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
