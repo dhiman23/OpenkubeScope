@@ -50,8 +50,9 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build 
         run: |
-          docker build -f  services/${{ matrix.service }}/Dockerfile \
-          -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }} .
+          cd services/${{ matrix.service }}
+
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }} .
       - name: trivy sbom creation
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -71,4 +72,5 @@ jobs:
           ignore-unfixed: true
       - name: docker image push
         run: |
+          docker tag ${{ matrix.service }}:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/kubescope:${{ matrix.service }}
           docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
