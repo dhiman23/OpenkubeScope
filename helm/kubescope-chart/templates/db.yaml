@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: openkube-db
+  name: openkube-db
+  namespace: openkubescope
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openkube-db
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: openkube-db
+    spec:
+      containers:
+      - image: postgres:17-alpine
+        name: postgres
+        ports: 
+        - containerPort: 5432
+        env:
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_USER
+
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_DB
+
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: POSTGRES_PASSWORD
+
+        volumeMounts:
+        - name: db
+          mountPath: /var/lib/postgresql/data
+
+      volumes:
+      - name: db
+        persistentVolumeClaim: 
+            claimName: db-pvc
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: openkube-db
+  name: openkube-db
+  namespace: openkubescope
+spec:
+  ports:
+  - port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    app: openkube-db
+
+
+
+
