@@ -50,7 +50,7 @@ spec:
 
     helm:
       valueFiles:
-        - environments/dev/kubescope/kubescope-chart/values.yaml
+        - environments/dev/kubescope/kubecope-chart/values.yaml
 
   destination:
     server: https://kubernetes.default.svc
