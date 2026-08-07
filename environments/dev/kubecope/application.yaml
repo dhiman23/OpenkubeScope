@@ -46,11 +46,11 @@ spec:
   source:
     repoURL: https://github.com/dhiman23/OpenkubeScope.git
     targetRevision: dev
-    path: kubescope-chart
+    path: environments/dev/kubecope/kubescope-chart
 
     helm:
       valueFiles:
-        - environments/dev/kubescope/kubecope-chart/values.yaml
+        - values.yaml
 
   destination:
     server: https://kubernetes.default.svc
