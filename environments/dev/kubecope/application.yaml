@@ -1,0 +1,65 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubescope
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # Images to watch
+    argocd-image-updater.argoproj.io/image-list: |
+      core-api=sajaldhiman1999/kubescope
+      report=sajaldhiman1999/kubescope
+      scanner=sajaldhiman1999/kubescope
+      web=sajaldhiman1999/kubescope
+
+    # Helm values paths
+    argocd-image-updater.argoproj.io/core-api.helm.image-name: coreApi.image.repository
+    argocd-image-updater.argoproj.io/core-api.helm.image-tag: coreApi.image.tag
+
+    argocd-image-updater.argoproj.io/report.helm.image-name: report.image.repository
+    argocd-image-updater.argoproj.io/report.helm.image-tag: report.image.tag
+
+    argocd-image-updater.argoproj.io/scanner.helm.image-name: scanner.image.repository
+    argocd-image-updater.argocd-image-updater.argoproj.io/scanner.helm.image-tag: scanner.image.tag
+
+    argocd-image-updater.argoproj.io/web.helm.image-name: web.image.repository
+    argocd-image-updater.argoproj.io/web.helm.image-tag: web.image.tag
+
+    argocd-image-updater.argoproj.io/pull-secret: pullsecret:argocd/docker-creds
+
+    # Update strategy
+    argocd-image-updater.argoproj.io/core-api.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/report.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/scanner.update-strategy: newest-build
+    argocd-image-updater.argoproj.io/web.update-strategy: newest-build
+
+    # Write back to Git
+    
+    argocd-image-updater.argoproj.io/write-back-method: git:sealedsecrets:argocd/git-creds
+    argocd-image-updater.argoproj.io/git-branch: dev
+    argocd-image-updater.argoproj.io/write-back-target: helmvalues:values.yaml
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/dhiman23/OpenkubeScope.git
+    targetRevision: dev
+    path: kubescope-chart
+
+    helm:
+      valueFiles:
+        - environments/dev/kubescope/kubescope-chart/values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openkubescope
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
