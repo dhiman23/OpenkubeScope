@@ -22,3 +22,4 @@ infra/*.tfplan
 infra/*.tfvars
 infra/*.tfvars.json
 infra/.terraform.lock.hcl
+.secrets/
