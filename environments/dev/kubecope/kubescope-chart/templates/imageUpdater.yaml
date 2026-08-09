@@ -1,0 +1,69 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: kubescope-updater
+  namespace: argocd
+spec:
+  # Image config lives here (not in Application annotations) because PR mode
+  # is only expressible in the CR — with useAnnotations: true the annotations
+  # win and write-back silently falls back to patching the Application spec.
+  commonUpdateSettings:
+    updateStrategy: newest-build
+    platforms:
+      - linux/amd64          # CI builds amd64 only; nodes are arm64
+  applicationRefs:
+    - namePattern: kubescope
+      useAnnotations: false
+      images:
+        - alias: core-api
+          imageName: sajaldhiman1999/kubescope
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            platforms:
+              - linux/amd64
+            allowTags: regexp:^core-api-
+          manifestTargets:
+            helm:
+              name: coreApi.image.repository
+              tag: coreApi.image.tag
+        - alias: report
+          imageName: sajaldhiman1999/kubescope
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            platforms:
+              - linux/amd64
+            allowTags: regexp:^report-service-
+          manifestTargets:
+            helm:
+              name: report.image.repository
+              tag: report.image.tag
+        - alias: scanner
+          imageName: sajaldhiman1999/kubescope
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            platforms:
+              - linux/amd64
+            allowTags: regexp:^rbac-scanner-service-
+          manifestTargets:
+            helm:
+              name: scanner.image.repository
+              tag: scanner.image.tag
+        - alias: web
+          imageName: sajaldhiman1999/kubescope
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            platforms:
+              - linux/amd64
+            allowTags: regexp:^web-
+          manifestTargets:
+            helm:
+              name: web.image.repository
+              tag: web.image.tag
+      writeBackConfig:
+        method: "git:secret:argocd/git-creds"
+        gitConfig:
+          repository: "https://github.com/dhiman23/OpenkubeScope.git"
+          branch: "dev"          # base branch PRs merge into
+          writeBackTarget: "helmvalues:values.yaml"
+          pullRequest:
+            github: {}
