@@ -151,6 +151,33 @@ function hasWildcard(arr: string[]): boolean {
 // SUBJECT EXTRACTION (From Bindings Only!)
 // ============================================
 
+// Snapshot exports ship an explicit subjects[] that can include subjects no
+// binding references; union it with the binding-derived set, deduped by key.
+function mergeSubjectSources(declared: unknown, derived: RBACSubject[]): RBACSubject[] {
+  const merged = new Map<string, RBACSubject>()
+
+  for (const sub of derived) {
+    merged.set(getSubjectKey(sub), sub)
+  }
+
+  if (Array.isArray(declared)) {
+    for (const raw of declared) {
+      const sub = normalizeSubjectEntry(raw)
+      if (!sub) continue
+      const key = getSubjectKey(sub)
+      if (!merged.has(key)) {
+        merged.set(key, {
+          name: sub.name,
+          kind: (sub.kind as "User" | "Group" | "ServiceAccount") || "User",
+          namespace: sub.namespace,
+        })
+      }
+    }
+  }
+
+  return Array.from(merged.values())
+}
+
 function extractUniqueSubjects(bindings: RBACBinding[]): RBACSubject[] {
   const subjectMap = new Map<string, RBACSubject>()
 
@@ -552,6 +579,45 @@ function convertKubeRole(item: any, kind: "Role" | "ClusterRole"): RBACRole {
   }
 }
 
+// "ServiceAccount:namespace:name" / "User:name" / "Group:name", as emitted by
+// KubeScope snapshot exports.
+function parseSubjectString(raw: string): { kind: string; name: string; namespace?: string } | null {
+  const subjectStr = raw.trim()
+  if (!subjectStr) return null
+
+  let subKind = "ServiceAccount"
+  let subName = subjectStr
+  let subNamespace: string | undefined
+
+  if (subjectStr.startsWith("ServiceAccount:")) {
+    const parts = subjectStr.split(":")
+    subKind = "ServiceAccount"
+    // Two-part form has no namespace segment: "ServiceAccount:name".
+    if (parts.length > 2) {
+      subNamespace = parts[1] || "default"
+      subName = parts.slice(2).join(":")
+    } else {
+      subName = parts[1] || ""
+    }
+  } else if (subjectStr.startsWith("User:")) {
+    subKind = "User"
+    subName = subjectStr.slice(5)
+  } else if (subjectStr.startsWith("Group:")) {
+    subKind = "Group"
+    subName = subjectStr.slice(6)
+  }
+
+  if (!subName) return null
+  return { kind: subKind, name: subName, namespace: subNamespace }
+}
+
+function normalizeSubjectEntry(s: any): { kind: string; name: string; namespace?: string } | null {
+  if (!s) return null
+  if (typeof s === "string") return parseSubjectString(s)
+  if (!s.name) return null
+  return { kind: s.kind || "User", name: s.name, namespace: s.namespace }
+}
+
 function convertKubeBinding(item: any, kind: "RoleBinding" | "ClusterRoleBinding"): RBACBinding {
   const metadata = item.metadata || {}
   const roleRef = item.roleRef || {}
@@ -560,34 +626,15 @@ function convertKubeBinding(item: any, kind: "RoleBinding" | "ClusterRoleBinding
 
   if (Array.isArray(item.subjects)) {
     subjects = item.subjects
-      .map((s: any) => ({
-        kind: s.kind || "User",
-        name: s.name || "",
-        namespace: s.namespace,
-      }))
-      .filter((s: any) => s.name)
-  } else if (typeof item.subject === "string" && item.subject.trim()) {
-    const subjectStr = item.subject.trim()
-    let subKind = "ServiceAccount"
-    let subName = subjectStr
-    let subNamespace: string | undefined
+      .map(normalizeSubjectEntry)
+      .filter((s: any): s is { kind: string; name: string; namespace?: string } => s !== null)
+  }
 
-    if (subjectStr.startsWith("ServiceAccount:")) {
-      const parts = subjectStr.split(":")
-      subKind = "ServiceAccount"
-      subNamespace = parts[1] || "default"
-      subName = parts.slice(2).join(":") || parts[1]
-    } else if (subjectStr.startsWith("User:")) {
-      subKind = "User"
-      subName = subjectStr.slice(5)
-    } else if (subjectStr.startsWith("Group:")) {
-      subKind = "Group"
-      subName = subjectStr.slice(6)
-    }
-
-    if (subName) {
-      subjects = [{ kind: subKind, name: subName, namespace: subNamespace }]
-    }
+  // Exports carry an empty subjects[] next to a single "subject" scalar, so the
+  // fallback must run whenever the array produced nothing - not only when absent.
+  if (subjects.length === 0 && item.subject) {
+    const single = normalizeSubjectEntry(item.subject)
+    if (single) subjects = [single]
   }
 
   return {
@@ -629,7 +676,7 @@ export function parseSnapshotJSON(content: string): ScanDataset {
       }
     }
 
-    const subjects = extractUniqueSubjects(bindings)
+    const subjects = mergeSubjectSources(data.subjects, extractUniqueSubjects(bindings))
     const findings = generateFindings(roles, bindings)
     return { subjects, roles, bindings, findings }
   }
@@ -662,7 +709,7 @@ export function parseSnapshotJSON(content: string): ScanDataset {
       }
     }
 
-    const subjects = extractUniqueSubjects(bindings)
+    const subjects = mergeSubjectSources(data.subjects, extractUniqueSubjects(bindings))
     const findings = generateFindings(roles, bindings)
     return { subjects, roles, bindings, findings }
   }
@@ -686,7 +733,7 @@ export function parseSnapshotJSON(content: string): ScanDataset {
       }
     }
 
-    const subjects = extractUniqueSubjects(bindings)
+    const subjects = mergeSubjectSources(data.subjects, extractUniqueSubjects(bindings))
 
     let findings: RBACFinding[] = Array.isArray(data.findings) ? data.findings : []
     if (findings.length === 0) {
@@ -718,7 +765,7 @@ export function parseSnapshotJSON(content: string): ScanDataset {
     }
   }
 
-  const subjects = extractUniqueSubjects(bindings)
+  const subjects = mergeSubjectSources(data.subjects, extractUniqueSubjects(bindings))
   const findings = generateFindings(roles, bindings)
 
   return { subjects, roles, bindings, findings }
@@ -737,6 +784,7 @@ export async function parseSnapshotZip(buffer: Buffer): Promise<ScanDataset> {
 
   const combinedRoles: RBACRole[] = []
   const combinedBindings: RBACBinding[] = []
+  const combinedSubjects: RBACSubject[] = []
 
   const jsonFiles = Object.keys(contents.files)
     .filter((name) => name.endsWith(".json"))
@@ -750,6 +798,7 @@ export async function parseSnapshotZip(buffer: Buffer): Promise<ScanDataset> {
         const data = parseSnapshotJSON(content)
         combinedRoles.push(...data.roles)
         combinedBindings.push(...data.bindings)
+        combinedSubjects.push(...data.subjects)
       } catch (e) {
         console.error(`Failed to parse ${fileName}:`, e)
       }
@@ -774,7 +823,7 @@ export async function parseSnapshotZip(buffer: Buffer): Promise<ScanDataset> {
   }
   const bindings = Array.from(bindingMap.values())
 
-  const subjects = extractUniqueSubjects(bindings)
+  const subjects = mergeSubjectSources(combinedSubjects, extractUniqueSubjects(bindings))
   const findings = generateFindings(roles, bindings)
 
   return { subjects, roles, bindings, findings }

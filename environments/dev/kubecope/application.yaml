@@ -6,12 +6,20 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    # Images to watch
-    argocd-image-updater.argoproj.io/image-list: |
-      core-api=sajaldhiman1999/kubescope
-      report=sajaldhiman1999/kubescope
-      scanner=sajaldhiman1999/kubescope
-      web=sajaldhiman1999/kubescope
+    # Images to watch (comma-separated, single line — updater does not parse newlines)
+    argocd-image-updater.argoproj.io/image-list: core-api=sajaldhiman1999/kubescope,report=sajaldhiman1999/kubescope,scanner=sajaldhiman1999/kubescope,web=sajaldhiman1999/kubescope
+
+    # Tag filters: all aliases share one repo, so each must only see its own tag prefix
+    argocd-image-updater.argoproj.io/core-api.allow-tags: regexp:^core-api-
+    argocd-image-updater.argoproj.io/report.allow-tags: regexp:^report-service-
+    argocd-image-updater.argoproj.io/scanner.allow-tags: regexp:^rbac-scanner-service-
+    argocd-image-updater.argoproj.io/web.allow-tags: regexp:^web-
+
+    # CI builds amd64-only images; cluster node is arm64, so accept amd64 manifests
+    argocd-image-updater.argoproj.io/core-api.platforms: linux/amd64
+    argocd-image-updater.argoproj.io/report.platforms: linux/amd64
+    argocd-image-updater.argoproj.io/scanner.platforms: linux/amd64
+    argocd-image-updater.argoproj.io/web.platforms: linux/amd64
 
     # Helm values paths
     argocd-image-updater.argoproj.io/core-api.helm.image-name: coreApi.image.repository
@@ -21,12 +29,10 @@ metadata:
     argocd-image-updater.argoproj.io/report.helm.image-tag: report.image.tag
 
     argocd-image-updater.argoproj.io/scanner.helm.image-name: scanner.image.repository
-    argocd-image-updater.argocd-image-updater.argoproj.io/scanner.helm.image-tag: scanner.image.tag
+    argocd-image-updater.argoproj.io/scanner.helm.image-tag: scanner.image.tag
 
     argocd-image-updater.argoproj.io/web.helm.image-name: web.image.repository
     argocd-image-updater.argoproj.io/web.helm.image-tag: web.image.tag
-
-    argocd-image-updater.argoproj.io/pull-secret: pullsecret:argocd/docker-creds
 
     # Update strategy
     argocd-image-updater.argoproj.io/core-api.update-strategy: newest-build
@@ -36,8 +42,6 @@ metadata:
 
     # Write back to Git
     
-    argocd-image-updater.argoproj.io/write-back-method: git:sealedsecrets:argocd/git-creds
-    argocd-image-updater.argoproj.io/git-branch: dev
     argocd-image-updater.argoproj.io/write-back-target: helmvalues:values.yaml
 
 spec:
