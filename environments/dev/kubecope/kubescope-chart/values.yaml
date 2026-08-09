@@ -1,35 +1,28 @@
 namespace: openkubescope
-
 coreApi:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope
-    tag: core-api-8a2a2278c5cee0ac9b23d8c6e553347e5fe45164
-
+    tag: core-api-99c81f25a1314a59cccae30903eb153185f7116a
 scanner:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope
-    tag: rbac-scanner-service-8a2a2278c5cee0ac9b23d8c6e553347e5fe45164
-
+    tag: rbac-scanner-service-99c81f25a1314a59cccae30903eb153185f7116a
 report:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope
-    tag: report-service-8a2a2278c5cee0ac9b23d8c6e553347e5fe45164
-
+    tag: report-service-99c81f25a1314a59cccae30903eb153185f7116a
 web:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope
-    tag: web-8a2a2278c5cee0ac9b23d8c6e553347e5fe45164
-
+    tag: web-99c81f25a1314a59cccae30903eb153185f7116a
 postgres:
   image: postgres:17-alpine
-
 service:
   type: ClusterIP
-
 ingress:
   enabled: true
   host: localhost
