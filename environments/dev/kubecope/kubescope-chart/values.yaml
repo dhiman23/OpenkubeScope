@@ -8,7 +8,7 @@ scanner:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope
-    tag: rbac-scanner-service-69758b5649d035cd50740ef8ca0041ebe3e4605a
+    tag: core-api-69758b5649d035cd50740ef8ca0041ebe3e4605a
 report:
   replicaCount: 2
   image:
@@ -18,7 +18,7 @@ web:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope
-    tag: web-69758b5649d035cd50740ef8ca0041ebe3e4605a
+    tag: core-api-69758b5649d035cd50740ef8ca0041ebe3e4605a
 postgres:
   image: postgres:17-alpine
 service:
