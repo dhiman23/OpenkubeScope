@@ -13,7 +13,7 @@ report:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope
-    tag: report-service-69758b5649d035cd50740ef8ca0041ebe3e4605a
+    tag: core-api-69758b5649d035cd50740ef8ca0041ebe3e4605a
 web:
   replicaCount: 2
   image:
