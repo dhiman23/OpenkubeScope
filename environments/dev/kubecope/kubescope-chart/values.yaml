@@ -2,23 +2,23 @@ namespace: openkubescope
 coreApi:
   replicaCount: 2
   image:
-    repository: sajaldhiman1999/kubescope
-    tag: core-api-69758b5649d035cd50740ef8ca0041ebe3e4605a
+    repository: sajaldhiman1999/kubescope-core-api
+    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
 scanner:
   replicaCount: 2
   image:
-    repository: sajaldhiman1999/kubescope
-    tag: rbac-scanner-service-69758b5649d035cd50740ef8ca0041ebe3e4605a
+    repository: sajaldhiman1999/kubescope-rbac-scanner-service
+    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
 report:
   replicaCount: 2
   image:
-    repository: sajaldhiman1999/kubescope
-    tag: report-service-69758b5649d035cd50740ef8ca0041ebe3e4605a
+    repository: sajaldhiman1999/kubescope-report-service
+    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
 web:
   replicaCount: 2
   image:
-    repository: sajaldhiman1999/kubescope
-    tag: web-69758b5649d035cd50740ef8ca0041ebe3e4605a
+    repository: sajaldhiman1999/kubescope-web
+    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
 postgres:
   image: postgres:17-alpine
 service:
