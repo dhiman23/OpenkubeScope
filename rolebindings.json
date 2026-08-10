@@ -1,0 +1,880 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "application-controller",
+                    "app.kubernetes.io/name": "argocd-application-controller",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-application-controller",
+                "namespace": "argocd",
+                "resourceVersion": "1800139",
+                "uid": "00ca7927-3af9-498f-8d72-6bced254b652"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-application-controller"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-application-controller"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "applicationset-controller",
+                    "app.kubernetes.io/name": "argocd-applicationset-controller",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-applicationset-controller",
+                "namespace": "argocd",
+                "resourceVersion": "1800140",
+                "uid": "fe4cd41c-714a-4263-8ea8-ba77a899070e"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-applicationset-controller"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-applicationset-controller"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "dex-server",
+                    "app.kubernetes.io/name": "argocd-dex-server",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-dex-server",
+                "namespace": "argocd",
+                "resourceVersion": "1800141",
+                "uid": "4aa355ef-175f-4c3b-b43d-e086da8f3f41"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-dex-server"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-dex-server"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"argocd-image-updater-controller\",\"app.kubernetes.io/name\":\"argocd-image-updater\",\"app.kubernetes.io/part-of\":\"argocd-image-updater\"},\"name\":\"argocd-image-updater\",\"namespace\":\"argocd\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"argocd-image-updater\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"argocd-image-updater-controller\"}]}\n",
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-08-07T00:05:24Z",
+                "labels": {
+                    "app.kubernetes.io/component": "argocd-image-updater-controller",
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/part-of": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater",
+                "namespace": "argocd",
+                "resourceVersion": "2016113",
+                "uid": "73025269-3f63-4e5e-b4e9-20f4fcfc19e4"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-image-updater"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-image-updater-controller"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"kustomize\",\"app.kubernetes.io/name\":\"argocd-image-updater\"},\"name\":\"argocd-image-updater-leader-election-rolebinding\",\"namespace\":\"argocd\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"argocd-image-updater-leader-election-role\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"argocd-image-updater-controller\"}]}\n",
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-08-07T00:05:24Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "kustomize",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater-leader-election-rolebinding",
+                "namespace": "argocd",
+                "resourceVersion": "2016114",
+                "uid": "37d19f2d-7897-4af3-b86f-e4998e4b80f6"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-image-updater-leader-election-role"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-image-updater-controller"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"kustomize\",\"app.kubernetes.io/name\":\"argocd-image-updater\"},\"name\":\"argocd-image-updater-manager-rolebinding\",\"namespace\":\"argocd\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"argocd-image-updater-manager-role\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"argocd-image-updater-controller\"}]}\n"
+                },
+                "creationTimestamp": "2026-08-08T21:27:15Z",
+                "labels": {
+                    "app.kubernetes.io/managed-by": "kustomize",
+                    "app.kubernetes.io/name": "argocd-image-updater"
+                },
+                "name": "argocd-image-updater-manager-rolebinding",
+                "namespace": "argocd",
+                "resourceVersion": "2016115",
+                "uid": "8311f0d8-f824-44f3-a300-c5862c73e2f6"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-image-updater-manager-role"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-image-updater-controller"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "notifications-controller",
+                    "app.kubernetes.io/name": "argocd-notifications-controller",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-notifications-controller",
+                "namespace": "argocd",
+                "resourceVersion": "1800142",
+                "uid": "1bf42201-0790-463f-9040-18533b6fdd31"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-notifications-controller"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-notifications-controller"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "redis",
+                    "app.kubernetes.io/name": "argocd-redis",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-redis",
+                "namespace": "argocd",
+                "resourceVersion": "1800143",
+                "uid": "c6288c7b-b26c-4baa-87d0-2cc5b82b0998"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-redis"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-redis"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "server",
+                    "app.kubernetes.io/name": "argocd-server",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-server",
+                "namespace": "argocd",
+                "resourceVersion": "1800144",
+                "uid": "be03d7bf-5a3c-42a0-867e-badee2ae04f1"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-server"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-server"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "default"
+                },
+                "creationTimestamp": "2026-08-06T21:28:31Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater",
+                "namespace": "default",
+                "resourceVersion": "1801340",
+                "uid": "bff1b44e-5e42-4a20-80ee-a7fb4876af77"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-image-updater"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-image-updater",
+                    "namespace": "default"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "default"
+                },
+                "creationTimestamp": "2026-08-06T21:28:31Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater-leader-election-rolebinding",
+                "namespace": "default",
+                "resourceVersion": "1801339",
+                "uid": "805fd49f-1175-47fd-82ec-a13235532e69"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "argocd-image-updater-leader-election-role"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "argocd-image-updater",
+                    "namespace": "default"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"controller\",\"app.kubernetes.io/instance\":\"ingress-nginx\",\"app.kubernetes.io/name\":\"ingress-nginx\",\"app.kubernetes.io/part-of\":\"ingress-nginx\",\"app.kubernetes.io/version\":\"1.15.1\"},\"name\":\"ingress-nginx\",\"namespace\":\"ingress-nginx\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"ingress-nginx\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"ingress-nginx\",\"namespace\":\"ingress-nginx\"}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T22:40:42Z",
+                "labels": {
+                    "app.kubernetes.io/component": "controller",
+                    "app.kubernetes.io/instance": "ingress-nginx",
+                    "app.kubernetes.io/name": "ingress-nginx",
+                    "app.kubernetes.io/part-of": "ingress-nginx",
+                    "app.kubernetes.io/version": "1.15.1"
+                },
+                "name": "ingress-nginx",
+                "namespace": "ingress-nginx",
+                "resourceVersion": "297288",
+                "uid": "ba927a0c-9bc2-41a7-a030-1d862bcc6438"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "ingress-nginx"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "ingress-nginx",
+                    "namespace": "ingress-nginx"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"admission-webhook\",\"app.kubernetes.io/instance\":\"ingress-nginx\",\"app.kubernetes.io/name\":\"ingress-nginx\",\"app.kubernetes.io/part-of\":\"ingress-nginx\",\"app.kubernetes.io/version\":\"1.15.1\"},\"name\":\"ingress-nginx-admission\",\"namespace\":\"ingress-nginx\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"ingress-nginx-admission\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"ingress-nginx-admission\",\"namespace\":\"ingress-nginx\"}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T22:40:42Z",
+                "labels": {
+                    "app.kubernetes.io/component": "admission-webhook",
+                    "app.kubernetes.io/instance": "ingress-nginx",
+                    "app.kubernetes.io/name": "ingress-nginx",
+                    "app.kubernetes.io/part-of": "ingress-nginx",
+                    "app.kubernetes.io/version": "1.15.1"
+                },
+                "name": "ingress-nginx-admission",
+                "namespace": "ingress-nginx",
+                "resourceVersion": "297289",
+                "uid": "db8fda29-cee8-4303-926f-0dba4d4d6a39"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "ingress-nginx-admission"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "ingress-nginx-admission",
+                    "namespace": "ingress-nginx"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "name": "kubeadm:bootstrap-signer-clusterinfo",
+                "namespace": "kube-public",
+                "resourceVersion": "223",
+                "uid": "62a742f3-ef3f-4522-b1f1-605c2f9b54b5"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "kubeadm:bootstrap-signer-clusterinfo"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "User",
+                    "name": "system:anonymous"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:bootstrap-signer",
+                "namespace": "kube-public",
+                "resourceVersion": "201",
+                "uid": "ec758a1d-2858-4db4-ac5e-5280f96e1317"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "system:controller:bootstrap-signer"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "bootstrap-signer",
+                    "namespace": "kube-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:11Z",
+                "name": "kube-proxy",
+                "namespace": "kube-system",
+                "resourceVersion": "248",
+                "uid": "39241650-5fd2-4d2f-b7aa-9dae6e74de01"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "kube-proxy"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "Group",
+                    "name": "system:bootstrappers:kubeadm:default-node-token"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "name": "kubeadm:kubelet-config",
+                "namespace": "kube-system",
+                "resourceVersion": "207",
+                "uid": "03bc4aee-66f8-4fe9-a20b-a3e69e20affe"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "kubeadm:kubelet-config"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "Group",
+                    "name": "system:nodes"
+                },
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "Group",
+                    "name": "system:bootstrappers:kubeadm:default-node-token"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "name": "kubeadm:nodes-kubeadm-config",
+                "namespace": "kube-system",
+                "resourceVersion": "204",
+                "uid": "6d87834f-c932-4c3c-ba6f-87b170a48e1c"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "kubeadm:nodes-kubeadm-config"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "Group",
+                    "name": "system:bootstrappers:kubeadm:default-node-token"
+                },
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "Group",
+                    "name": "system:nodes"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"name\":\"sealed-secrets-controller\"},\"name\":\"sealed-secrets-controller\",\"namespace\":\"kube-system\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"sealed-secrets-key-admin\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"sealed-secrets-controller\",\"namespace\":\"kube-system\"}]}\n"
+                },
+                "creationTimestamp": "2026-08-03T22:16:12Z",
+                "labels": {
+                    "name": "sealed-secrets-controller"
+                },
+                "name": "sealed-secrets-controller",
+                "namespace": "kube-system",
+                "resourceVersion": "1606328",
+                "uid": "3b34697c-b34d-48a3-b76e-a7a5e5309385"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "sealed-secrets-key-admin"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "sealed-secrets-controller",
+                    "namespace": "kube-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"name\":\"sealed-secrets-service-proxier\"},\"name\":\"sealed-secrets-service-proxier\",\"namespace\":\"kube-system\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"sealed-secrets-service-proxier\"},\"subjects\":[{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Group\",\"name\":\"system:authenticated\"}]}\n"
+                },
+                "creationTimestamp": "2026-08-03T22:16:12Z",
+                "labels": {
+                    "name": "sealed-secrets-service-proxier"
+                },
+                "name": "sealed-secrets-service-proxier",
+                "namespace": "kube-system",
+                "resourceVersion": "1606327",
+                "uid": "405fce0d-4a7a-40bc-89c3-8be78fdfbf58"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "sealed-secrets-service-proxier"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "Group",
+                    "name": "system:authenticated"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system::extension-apiserver-authentication-reader",
+                "namespace": "kube-system",
+                "resourceVersion": "195",
+                "uid": "414cd5d0-d4c3-4ca2-aca2-9db9d4da6637"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "extension-apiserver-authentication-reader"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "User",
+                    "name": "system:kube-controller-manager"
+                },
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "User",
+                    "name": "system:kube-scheduler"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system::leader-locking-kube-controller-manager",
+                "namespace": "kube-system",
+                "resourceVersion": "196",
+                "uid": "400b0a5f-b84e-4975-8c67-fb0681e1f847"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "system::leader-locking-kube-controller-manager"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "User",
+                    "name": "system:kube-controller-manager"
+                },
+                {
+                    "kind": "ServiceAccount",
+                    "name": "kube-controller-manager",
+                    "namespace": "kube-system"
+                },
+                {
+                    "kind": "ServiceAccount",
+                    "name": "leader-election-controller",
+                    "namespace": "kube-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system::leader-locking-kube-scheduler",
+                "namespace": "kube-system",
+                "resourceVersion": "197",
+                "uid": "2a3bcbcf-e8d9-49d1-9608-5976c941997d"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "system::leader-locking-kube-scheduler"
+            },
+            "subjects": [
+                {
+                    "apiGroup": "rbac.authorization.k8s.io",
+                    "kind": "User",
+                    "name": "system:kube-scheduler"
+                },
+                {
+                    "kind": "ServiceAccount",
+                    "name": "kube-scheduler",
+                    "namespace": "kube-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:bootstrap-signer",
+                "namespace": "kube-system",
+                "resourceVersion": "198",
+                "uid": "43e93217-f861-4d94-bf96-97d4d84021ea"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "system:controller:bootstrap-signer"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "bootstrap-signer",
+                    "namespace": "kube-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:cloud-provider",
+                "namespace": "kube-system",
+                "resourceVersion": "199",
+                "uid": "d5e7c6b7-3a6c-4e52-83c5-3278669c7d31"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "system:controller:cloud-provider"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "cloud-provider",
+                    "namespace": "kube-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:token-cleaner",
+                "namespace": "kube-system",
+                "resourceVersion": "200",
+                "uid": "8d72d0b4-3d6a-4f6f-aa2f-915c11984a7c"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "system:controller:token-cleaner"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "token-cleaner",
+                    "namespace": "kube-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"name\":\"local-path-provisioner-bind\",\"namespace\":\"local-path-storage\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"local-path-provisioner-role\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"local-path-provisioner-service-account\",\"namespace\":\"local-path-storage\"}]}\n"
+                },
+                "creationTimestamp": "2026-07-05T22:02:12Z",
+                "name": "local-path-provisioner-bind",
+                "namespace": "local-path-storage",
+                "resourceVersion": "263",
+                "uid": "2570251e-c034-45ad-9c60-5e763db29ca5"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "local-path-provisioner-role"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "local-path-provisioner-service-account",
+                    "namespace": "local-path-storage"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"metallb\"},\"name\":\"controller\",\"namespace\":\"metallb-system\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"controller\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"controller\",\"namespace\":\"metallb-system\"}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T23:13:52Z",
+                "labels": {
+                    "app": "metallb"
+                },
+                "name": "controller",
+                "namespace": "metallb-system",
+                "resourceVersion": "301735",
+                "uid": "5206fec6-b50a-4a04-bc16-2aff25edfa1c"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "controller"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "controller",
+                    "namespace": "metallb-system"
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"RoleBinding\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"metallb\"},\"name\":\"pod-lister\",\"namespace\":\"metallb-system\"},\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"Role\",\"name\":\"pod-lister\"},\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"controller\",\"namespace\":\"metallb-system\"},{\"kind\":\"ServiceAccount\",\"name\":\"speaker\",\"namespace\":\"metallb-system\"}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T23:13:52Z",
+                "labels": {
+                    "app": "metallb"
+                },
+                "name": "pod-lister",
+                "namespace": "metallb-system",
+                "resourceVersion": "301736",
+                "uid": "2fa12c18-d34d-412f-9c8a-5e180d473e0c"
+            },
+            "roleRef": {
+                "apiGroup": "rbac.authorization.k8s.io",
+                "kind": "Role",
+                "name": "pod-lister"
+            },
+            "subjects": [
+                {
+                    "kind": "ServiceAccount",
+                    "name": "controller",
+                    "namespace": "metallb-system"
+                },
+                {
+                    "kind": "ServiceAccount",
+                    "name": "speaker",
+                    "namespace": "metallb-system"
+                }
+            ]
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}
