@@ -2,33 +2,21 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
-import { Github, Twitter } from "lucide-react"
+import { Github } from "lucide-react"
 
+const GITHUB_URL = "https://github.com/dhiman23/OpenkubeScope"
+
+// Only routes that exist. Placeholder entries (Changelog, Roadmap, Blog,
+// About, Careers, Privacy, ...) were dropped rather than left as href="#".
 const footerLinks = {
-  Product: [
-    { label: "Features", href: "#" },
-    { label: "Pricing", href: "#" },
-    { label: "Changelog", href: "#" },
-    { label: "Roadmap", href: "#" },
-  ],
+  Product: [{ label: "Features", href: "/features" }],
   Resources: [
-    { label: "Documentation", href: "#" },
-    { label: "API Reference", href: "#" },
-    { label: "Guides", href: "#" },
-    { label: "Blog", href: "#" },
+    { label: "Documentation", href: "/docs" },
+    { label: "Guides", href: "/docs/getting-started" },
+    { label: "Upload a snapshot", href: "/docs/upload-snapshot" },
+    { label: "FAQ", href: "/docs/faq" },
   ],
-  Company: [
-    { label: "About", href: "#" },
-    { label: "Careers", href: "#" },
-    { label: "Contact", href: "#" },
-    { label: "Partners", href: "#" },
-  ],
-  Legal: [
-    { label: "Privacy", href: "#" },
-    { label: "Terms", href: "#" },
-    { label: "Security", href: "#" },
-    { label: "Cookies", href: "#" },
-  ],
+  Legal: [{ label: "Security & Privacy", href: "/docs/security-privacy" }],
 }
 
 export function Footer() {
@@ -38,7 +26,7 @@ export function Footer() {
       <div className="absolute inset-0 bg-gradient-to-b from-background to-muted/30" />
       
       <div className="relative container mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-16">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <motion.div
@@ -56,15 +44,10 @@ export function Footer() {
                 The modern way to understand and audit Kubernetes RBAC permissions.
               </p>
               <div className="mt-6 flex items-center gap-4">
-                <a 
-                  href="#" 
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Twitter"
-                >
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a 
-                  href="#" 
+                <a
+                  href={GITHUB_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="GitHub"
                 >
@@ -87,12 +70,12 @@ export function Footer() {
               <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <a
+                    <Link
                       href={link.href}
                       className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {link.label}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
