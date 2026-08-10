@@ -7,6 +7,11 @@ spec:
   # Image config lives here (not in Application annotations) because PR mode
   # is only expressible in the CR — with useAnnotations: true the annotations
   # win and write-back silently falls back to patching the Application spec.
+  #
+  # Every alias MUST use a distinct imageName. The updater indexes an app's
+  # current images by image name, so a shared repo makes all four aliases
+  # resolve to whichever entry matches first — they then look permanently
+  # outdated and get each other's tags written into their helm values.
   commonUpdateSettings:
     updateStrategy: newest-build
     platforms:
@@ -16,45 +21,45 @@ spec:
       useAnnotations: false
       images:
         - alias: core-api
-          imageName: sajaldhiman1999/kubescope
+          imageName: sajaldhiman1999/kubescope-core-api
           commonUpdateSettings:
             updateStrategy: newest-build
             platforms:
               - linux/amd64
-            allowTags: regexp:^core-api-
+            allowTags: regexp:^[0-9a-f]{40}$
           manifestTargets:
             helm:
               name: coreApi.image.repository
               tag: coreApi.image.tag
         - alias: report
-          imageName: sajaldhiman1999/kubescope
+          imageName: sajaldhiman1999/kubescope-report-service
           commonUpdateSettings:
             updateStrategy: newest-build
             platforms:
               - linux/amd64
-            allowTags: regexp:^report-service-
+            allowTags: regexp:^[0-9a-f]{40}$
           manifestTargets:
             helm:
               name: report.image.repository
               tag: report.image.tag
         - alias: scanner
-          imageName: sajaldhiman1999/kubescope
+          imageName: sajaldhiman1999/kubescope-rbac-scanner-service
           commonUpdateSettings:
             updateStrategy: newest-build
             platforms:
               - linux/amd64
-            allowTags: regexp:^rbac-scanner-service-
+            allowTags: regexp:^[0-9a-f]{40}$
           manifestTargets:
             helm:
               name: scanner.image.repository
               tag: scanner.image.tag
         - alias: web
-          imageName: sajaldhiman1999/kubescope
+          imageName: sajaldhiman1999/kubescope-web
           commonUpdateSettings:
             updateStrategy: newest-build
             platforms:
               - linux/amd64
-            allowTags: regexp:^web-
+            allowTags: regexp:^[0-9a-f]{40}$
           manifestTargets:
             helm:
               name: web.image.repository
