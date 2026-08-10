@@ -3,22 +3,22 @@ coreApi:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-core-api
-    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
+    tag: 8bfe8529345781c020d32ffd774dd8858509cf1a
 scanner:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-rbac-scanner-service
-    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
+    tag: 8bfe8529345781c020d32ffd774dd8858509cf1a
 report:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-report-service
-    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
+    tag: 8bfe8529345781c020d32ffd774dd8858509cf1a
 web:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-web
-    tag: e427d1cdabb308950c73d69a0267a134ef75e8a8
+    tag: 8bfe8529345781c020d32ffd774dd8858509cf1a
 postgres:
   image: postgres:17-alpine
 service:
