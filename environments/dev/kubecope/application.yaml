@@ -5,45 +5,9 @@ metadata:
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
-  annotations:
-    # Images to watch (comma-separated, single line — updater does not parse newlines)
-    argocd-image-updater.argoproj.io/image-list: core-api=sajaldhiman1999/kubescope,report=sajaldhiman1999/kubescope,scanner=sajaldhiman1999/kubescope,web=sajaldhiman1999/kubescope
-
-    # Tag filters: all aliases share one repo, so each must only see its own tag prefix
-    argocd-image-updater.argoproj.io/core-api.allow-tags: regexp:^core-api-
-    argocd-image-updater.argoproj.io/report.allow-tags: regexp:^report-service-
-    argocd-image-updater.argoproj.io/scanner.allow-tags: regexp:^rbac-scanner-service-
-    argocd-image-updater.argoproj.io/web.allow-tags: regexp:^web-
-
-    # CI builds amd64-only images; cluster node is arm64, so accept amd64 manifests
-    argocd-image-updater.argoproj.io/core-api.platforms: linux/amd64
-    argocd-image-updater.argoproj.io/report.platforms: linux/amd64
-    argocd-image-updater.argoproj.io/scanner.platforms: linux/amd64
-    argocd-image-updater.argoproj.io/web.platforms: linux/amd64
-
-    # Helm values paths
-    argocd-image-updater.argoproj.io/core-api.helm.image-name: coreApi.image.repository
-    argocd-image-updater.argoproj.io/core-api.helm.image-tag: coreApi.image.tag
-
-    argocd-image-updater.argoproj.io/report.helm.image-name: report.image.repository
-    argocd-image-updater.argoproj.io/report.helm.image-tag: report.image.tag
-
-    argocd-image-updater.argoproj.io/scanner.helm.image-name: scanner.image.repository
-    argocd-image-updater.argoproj.io/scanner.helm.image-tag: scanner.image.tag
-
-    argocd-image-updater.argoproj.io/web.helm.image-name: web.image.repository
-    argocd-image-updater.argoproj.io/web.helm.image-tag: web.image.tag
-
-    # Update strategy
-    argocd-image-updater.argoproj.io/core-api.update-strategy: newest-build
-    argocd-image-updater.argoproj.io/report.update-strategy: newest-build
-    argocd-image-updater.argoproj.io/scanner.update-strategy: newest-build
-    argocd-image-updater.argoproj.io/web.update-strategy: newest-build
-
-    # Write back to Git
-    
-    argocd-image-updater.argoproj.io/write-back-target: helmvalues:values.yaml
-
+  # Image Updater config is NOT here: the ImageUpdater CR sets useAnnotations:
+  # false, so these annotations were dead config. See the chart template
+  # templates/imageUpdater.yaml.
 spec:
   project: default
 

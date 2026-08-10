@@ -1,0 +1,1740 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "application-controller",
+                    "app.kubernetes.io/name": "argocd-application-controller",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-application-controller",
+                "namespace": "argocd",
+                "resourceVersion": "1800121",
+                "uid": "684e2932-12da-42d0-bbc1-cac9712c4d7e"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets",
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argoproj.io"
+                    ],
+                    "resources": [
+                        "applications",
+                        "applicationsets",
+                        "appprojects"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "watch",
+                        "update",
+                        "patch",
+                        "delete"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "list"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "apps"
+                    ],
+                    "resources": [
+                        "deployments"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "applicationset-controller",
+                    "app.kubernetes.io/name": "argocd-applicationset-controller",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-applicationset-controller",
+                "namespace": "argocd",
+                "resourceVersion": "1800122",
+                "uid": "183da6ec-50c6-4023-80d6-c515b733cb5d"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        "argoproj.io"
+                    ],
+                    "resources": [
+                        "applications",
+                        "applicationsets",
+                        "applicationsets/finalizers"
+                    ],
+                    "verbs": [
+                        "create",
+                        "delete",
+                        "get",
+                        "list",
+                        "patch",
+                        "update",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argoproj.io"
+                    ],
+                    "resources": [
+                        "appprojects"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argoproj.io"
+                    ],
+                    "resources": [
+                        "applicationsets/status"
+                    ],
+                    "verbs": [
+                        "get",
+                        "patch",
+                        "update"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "patch",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets",
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "create"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resourceNames": [
+                        "58ac56fa.applicationsets.argoproj.io"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "get",
+                        "update",
+                        "create"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "dex-server",
+                    "app.kubernetes.io/name": "argocd-dex-server",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-dex-server",
+                "namespace": "argocd",
+                "resourceVersion": "1800123",
+                "uid": "ae7479fe-bdbf-4633-b4c7-175af9449226"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets",
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"argocd-image-updater-controller\",\"app.kubernetes.io/name\":\"argocd-image-updater\",\"app.kubernetes.io/part-of\":\"argocd-image-updater\"},\"name\":\"argocd-image-updater\",\"namespace\":\"argocd\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"secrets\",\"configmaps\"],\"verbs\":[\"get\",\"list\",\"watch\"]}]}\n",
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-08-07T00:05:24Z",
+                "labels": {
+                    "app.kubernetes.io/component": "argocd-image-updater-controller",
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/part-of": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater",
+                "namespace": "argocd",
+                "resourceVersion": "2016110",
+                "uid": "d94b56a8-5658-467f-b963-9e107d7f7861"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets",
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/managed-by\":\"kustomize\",\"app.kubernetes.io/name\":\"argocd-image-updater\"},\"name\":\"argocd-image-updater-leader-election-role\",\"namespace\":\"argocd\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"configmaps\"],\"verbs\":[\"get\",\"list\",\"watch\",\"create\",\"update\",\"patch\",\"delete\"]},{\"apiGroups\":[\"coordination.k8s.io\"],\"resources\":[\"leases\"],\"verbs\":[\"get\",\"list\",\"watch\",\"create\",\"update\",\"patch\",\"delete\"]},{\"apiGroups\":[\"\"],\"resources\":[\"events\"],\"verbs\":[\"create\",\"patch\"]}]}\n",
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "argocd"
+                },
+                "creationTimestamp": "2026-08-07T00:05:24Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "kustomize",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater-leader-election-role",
+                "namespace": "argocd",
+                "resourceVersion": "2016111",
+                "uid": "dfdfe00f-2452-4736-b071-a1e8ae1c10d8"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch",
+                        "create",
+                        "update",
+                        "patch",
+                        "delete"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch",
+                        "create",
+                        "update",
+                        "patch",
+                        "delete"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "patch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"name\":\"argocd-image-updater-manager-role\",\"namespace\":\"argocd\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"events\"],\"verbs\":[\"create\"]},{\"apiGroups\":[\"argocd-image-updater.argoproj.io\"],\"resources\":[\"imageupdaters\"],\"verbs\":[\"create\",\"delete\",\"get\",\"list\",\"patch\",\"update\",\"watch\"]},{\"apiGroups\":[\"argocd-image-updater.argoproj.io\"],\"resources\":[\"imageupdaters/finalizers\"],\"verbs\":[\"update\"]},{\"apiGroups\":[\"argocd-image-updater.argoproj.io\"],\"resources\":[\"imageupdaters/status\"],\"verbs\":[\"get\",\"patch\",\"update\"]},{\"apiGroups\":[\"argoproj.io\"],\"resources\":[\"applications\"],\"verbs\":[\"get\",\"list\",\"patch\",\"update\",\"watch\"]}]}\n"
+                },
+                "creationTimestamp": "2026-08-08T21:27:15Z",
+                "name": "argocd-image-updater-manager-role",
+                "namespace": "argocd",
+                "resourceVersion": "2016112",
+                "uid": "2b6d857c-0a7f-4e6e-a1a6-c1edc1ba6e58"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argocd-image-updater.argoproj.io"
+                    ],
+                    "resources": [
+                        "imageupdaters"
+                    ],
+                    "verbs": [
+                        "create",
+                        "delete",
+                        "get",
+                        "list",
+                        "patch",
+                        "update",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argocd-image-updater.argoproj.io"
+                    ],
+                    "resources": [
+                        "imageupdaters/finalizers"
+                    ],
+                    "verbs": [
+                        "update"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argocd-image-updater.argoproj.io"
+                    ],
+                    "resources": [
+                        "imageupdaters/status"
+                    ],
+                    "verbs": [
+                        "get",
+                        "patch",
+                        "update"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argoproj.io"
+                    ],
+                    "resources": [
+                        "applications"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "patch",
+                        "update",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "notifications-controller",
+                    "app.kubernetes.io/name": "argocd-notifications-controller",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-notifications-controller",
+                "namespace": "argocd",
+                "resourceVersion": "1800124",
+                "uid": "08310adc-4b0b-45af-99cb-c550d7d887d0"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        "argoproj.io"
+                    ],
+                    "resources": [
+                        "applications",
+                        "appprojects"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch",
+                        "update",
+                        "patch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "configmaps",
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "argocd-notifications-cm"
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "argocd-notifications-secret"
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "redis",
+                    "app.kubernetes.io/name": "argocd-redis",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-redis",
+                "namespace": "argocd",
+                "resourceVersion": "1800125",
+                "uid": "9d5d0bd3-a88e-4d9e-9f5a-da963eb2cc5e"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "argocd-redis"
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "create"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-08-06T21:21:27Z",
+                "labels": {
+                    "app.kubernetes.io/component": "server",
+                    "app.kubernetes.io/name": "argocd-server",
+                    "app.kubernetes.io/part-of": "argocd"
+                },
+                "name": "argocd-server",
+                "namespace": "argocd",
+                "resourceVersion": "1800126",
+                "uid": "232f4844-d365-40ce-8b40-59fc51f9998d"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets",
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "watch",
+                        "update",
+                        "patch",
+                        "delete"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "argoproj.io"
+                    ],
+                    "resources": [
+                        "applications",
+                        "appprojects",
+                        "applicationsets"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "watch",
+                        "update",
+                        "delete",
+                        "patch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "list"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "default"
+                },
+                "creationTimestamp": "2026-08-06T21:28:31Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater",
+                "namespace": "default",
+                "resourceVersion": "1801336",
+                "uid": "3daafd16-c4f2-4f0b-ac67-93998b424de9"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets",
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "argocd-image-updater",
+                    "meta.helm.sh/release-namespace": "default"
+                },
+                "creationTimestamp": "2026-08-06T21:28:31Z",
+                "labels": {
+                    "app.kubernetes.io/instance": "argocd-image-updater",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "argocd-image-updater",
+                    "app.kubernetes.io/version": "v1.2.2",
+                    "control-plane": "argocd-image-updater-controller",
+                    "helm.sh/chart": "argocd-image-updater-1.2.4"
+                },
+                "name": "argocd-image-updater-leader-election-role",
+                "namespace": "default",
+                "resourceVersion": "1801337",
+                "uid": "b542211f-a201-4dff-aad8-f049b7c002ba"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch",
+                        "create",
+                        "update",
+                        "patch",
+                        "delete"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch",
+                        "create",
+                        "update",
+                        "patch",
+                        "delete"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "patch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"controller\",\"app.kubernetes.io/instance\":\"ingress-nginx\",\"app.kubernetes.io/name\":\"ingress-nginx\",\"app.kubernetes.io/part-of\":\"ingress-nginx\",\"app.kubernetes.io/version\":\"1.15.1\"},\"name\":\"ingress-nginx\",\"namespace\":\"ingress-nginx\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"namespaces\"],\"verbs\":[\"get\"]},{\"apiGroups\":[\"\"],\"resources\":[\"configmaps\",\"pods\",\"secrets\",\"endpoints\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"\"],\"resources\":[\"services\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"networking.k8s.io\"],\"resources\":[\"ingresses\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"networking.k8s.io\"],\"resources\":[\"ingresses/status\"],\"verbs\":[\"update\"]},{\"apiGroups\":[\"networking.k8s.io\"],\"resources\":[\"ingressclasses\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"coordination.k8s.io\"],\"resourceNames\":[\"ingress-nginx-leader\"],\"resources\":[\"leases\"],\"verbs\":[\"get\",\"update\"]},{\"apiGroups\":[\"coordination.k8s.io\"],\"resources\":[\"leases\"],\"verbs\":[\"create\"]},{\"apiGroups\":[\"\"],\"resources\":[\"events\"],\"verbs\":[\"create\",\"patch\"]},{\"apiGroups\":[\"discovery.k8s.io\"],\"resources\":[\"endpointslices\"],\"verbs\":[\"list\",\"watch\",\"get\"]}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T22:40:42Z",
+                "labels": {
+                    "app.kubernetes.io/component": "controller",
+                    "app.kubernetes.io/instance": "ingress-nginx",
+                    "app.kubernetes.io/name": "ingress-nginx",
+                    "app.kubernetes.io/part-of": "ingress-nginx",
+                    "app.kubernetes.io/version": "1.15.1"
+                },
+                "name": "ingress-nginx",
+                "namespace": "ingress-nginx",
+                "resourceVersion": "297284",
+                "uid": "fd0b37ea-e1a3-4d19-8c99-b2467c9b75fb"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "namespaces"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "configmaps",
+                        "pods",
+                        "secrets",
+                        "endpoints"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "services"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "networking.k8s.io"
+                    ],
+                    "resources": [
+                        "ingresses"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "networking.k8s.io"
+                    ],
+                    "resources": [
+                        "ingresses/status"
+                    ],
+                    "verbs": [
+                        "update"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "networking.k8s.io"
+                    ],
+                    "resources": [
+                        "ingressclasses"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resourceNames": [
+                        "ingress-nginx-leader"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "get",
+                        "update"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "create"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "patch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "discovery.k8s.io"
+                    ],
+                    "resources": [
+                        "endpointslices"
+                    ],
+                    "verbs": [
+                        "list",
+                        "watch",
+                        "get"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"admission-webhook\",\"app.kubernetes.io/instance\":\"ingress-nginx\",\"app.kubernetes.io/name\":\"ingress-nginx\",\"app.kubernetes.io/part-of\":\"ingress-nginx\",\"app.kubernetes.io/version\":\"1.15.1\"},\"name\":\"ingress-nginx-admission\",\"namespace\":\"ingress-nginx\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"secrets\"],\"verbs\":[\"get\",\"create\"]}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T22:40:42Z",
+                "labels": {
+                    "app.kubernetes.io/component": "admission-webhook",
+                    "app.kubernetes.io/instance": "ingress-nginx",
+                    "app.kubernetes.io/name": "ingress-nginx",
+                    "app.kubernetes.io/part-of": "ingress-nginx",
+                    "app.kubernetes.io/version": "1.15.1"
+                },
+                "name": "ingress-nginx-admission",
+                "namespace": "ingress-nginx",
+                "resourceVersion": "297285",
+                "uid": "34e5806c-1143-4007-aa20-a2877490b34a"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "get",
+                        "create"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "name": "kubeadm:bootstrap-signer-clusterinfo",
+                "namespace": "kube-public",
+                "resourceVersion": "222",
+                "uid": "721067cb-800b-40cf-878c-b9724e853690"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "cluster-info"
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:bootstrap-signer",
+                "namespace": "kube-public",
+                "resourceVersion": "194",
+                "uid": "ab0f254b-1955-437c-bf2e-fa1340de55ad"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "cluster-info"
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "update"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "",
+                        "events.k8s.io"
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "patch",
+                        "update"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "extension-apiserver-authentication-reader",
+                "namespace": "kube-system",
+                "resourceVersion": "188",
+                "uid": "d8bc7d04-4561-4253-9155-9a3f82168f10"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "extension-apiserver-authentication"
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:11Z",
+                "name": "kube-proxy",
+                "namespace": "kube-system",
+                "resourceVersion": "247",
+                "uid": "df2722a0-27ec-4b7e-8cb8-449d20658e66"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "kube-proxy"
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "name": "kubeadm:kubelet-config",
+                "namespace": "kube-system",
+                "resourceVersion": "206",
+                "uid": "2714f8de-f1ed-4e9d-ba6a-4646cc132999"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "kubelet-config"
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "name": "kubeadm:nodes-kubeadm-config",
+                "namespace": "kube-system",
+                "resourceVersion": "203",
+                "uid": "944bed3c-20c0-4956-b1d8-ebd30c0a964a"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "kubeadm-config"
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"name\":\"sealed-secrets-key-admin\"},\"name\":\"sealed-secrets-key-admin\",\"namespace\":\"kube-system\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"secrets\"],\"verbs\":[\"create\",\"list\"]}]}\n"
+                },
+                "creationTimestamp": "2026-08-03T22:16:12Z",
+                "labels": {
+                    "name": "sealed-secrets-key-admin"
+                },
+                "name": "sealed-secrets-key-admin",
+                "namespace": "kube-system",
+                "resourceVersion": "1606329",
+                "uid": "66921944-87fa-497b-8ebe-809862df9e23"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "create",
+                        "list"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"name\":\"sealed-secrets-service-proxier\"},\"name\":\"sealed-secrets-service-proxier\",\"namespace\":\"kube-system\"},\"rules\":[{\"apiGroups\":[\"\"],\"resourceNames\":[\"sealed-secrets-controller\"],\"resources\":[\"services\"],\"verbs\":[\"get\"]},{\"apiGroups\":[\"\"],\"resourceNames\":[\"http:sealed-secrets-controller:\",\"http:sealed-secrets-controller:http\",\"sealed-secrets-controller\"],\"resources\":[\"services/proxy\"],\"verbs\":[\"create\",\"get\"]}]}\n"
+                },
+                "creationTimestamp": "2026-08-03T22:16:12Z",
+                "labels": {
+                    "name": "sealed-secrets-service-proxier"
+                },
+                "name": "sealed-secrets-service-proxier",
+                "namespace": "kube-system",
+                "resourceVersion": "1606322",
+                "uid": "79910926-c28c-458d-9c67-df6d31584e4d"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "sealed-secrets-controller"
+                    ],
+                    "resources": [
+                        "services"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "http:sealed-secrets-controller:",
+                        "http:sealed-secrets-controller:http",
+                        "sealed-secrets-controller"
+                    ],
+                    "resources": [
+                        "services/proxy"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system::leader-locking-kube-controller-manager",
+                "namespace": "kube-system",
+                "resourceVersion": "192",
+                "uid": "55e59fb4-66b4-4940-a5c4-50c7421b6d0c"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "update",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leasecandidates"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "update",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system::leader-locking-kube-scheduler",
+                "namespace": "kube-system",
+                "resourceVersion": "193",
+                "uid": "d35b72a2-24a7-43bc-9ca8-3fcf43ae2104"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leases"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "update",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "coordination.k8s.io"
+                    ],
+                    "resources": [
+                        "leasecandidates"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "update",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:bootstrap-signer",
+                "namespace": "kube-system",
+                "resourceVersion": "189",
+                "uid": "b71deae3-4122-45f6-9678-6092d5a7b22b"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:cloud-provider",
+                "namespace": "kube-system",
+                "resourceVersion": "190",
+                "uid": "160dfa62-5128-4275-9875-95558129e01a"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "create",
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "rbac.authorization.kubernetes.io/autoupdate": "true"
+                },
+                "creationTimestamp": "2026-07-05T22:02:10Z",
+                "labels": {
+                    "kubernetes.io/bootstrapping": "rbac-defaults"
+                },
+                "name": "system:controller:token-cleaner",
+                "namespace": "kube-system",
+                "resourceVersion": "191",
+                "uid": "9135d1e9-3980-49ba-a743-4d70041f4e4a"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "delete",
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "",
+                        "events.k8s.io"
+                    ],
+                    "resources": [
+                        "events"
+                    ],
+                    "verbs": [
+                        "create",
+                        "patch",
+                        "update"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"name\":\"local-path-provisioner-role\",\"namespace\":\"local-path-storage\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"pods\"],\"verbs\":[\"get\",\"list\",\"watch\",\"create\",\"patch\",\"update\",\"delete\"]}]}\n"
+                },
+                "creationTimestamp": "2026-07-05T22:02:12Z",
+                "name": "local-path-provisioner-role",
+                "namespace": "local-path-storage",
+                "resourceVersion": "261",
+                "uid": "ebe45ea1-9587-48d0-a110-feb4e811c8a0"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "pods"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch",
+                        "create",
+                        "patch",
+                        "update",
+                        "delete"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"metallb\"},\"name\":\"controller\",\"namespace\":\"metallb-system\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"secrets\"],\"verbs\":[\"create\",\"delete\",\"get\",\"list\",\"patch\",\"update\",\"watch\"]},{\"apiGroups\":[\"\"],\"resourceNames\":[\"memberlist\"],\"resources\":[\"secrets\"],\"verbs\":[\"list\"]},{\"apiGroups\":[\"apps\"],\"resourceNames\":[\"controller\"],\"resources\":[\"deployments\"],\"verbs\":[\"get\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"bgppeers\"],\"verbs\":[\"get\",\"list\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"bfdprofiles\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"ipaddresspools\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"ipaddresspools/status\"],\"verbs\":[\"update\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"bgpadvertisements\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"l2advertisements\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"communities\"],\"verbs\":[\"get\",\"list\",\"watch\"]}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T23:13:52Z",
+                "labels": {
+                    "app": "metallb"
+                },
+                "name": "controller",
+                "namespace": "metallb-system",
+                "resourceVersion": "301731",
+                "uid": "35a83584-2ccb-4941-9cb3-a5a156a09078"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "create",
+                        "delete",
+                        "get",
+                        "list",
+                        "patch",
+                        "update",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resourceNames": [
+                        "memberlist"
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "list"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "apps"
+                    ],
+                    "resourceNames": [
+                        "controller"
+                    ],
+                    "resources": [
+                        "deployments"
+                    ],
+                    "verbs": [
+                        "get"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "bgppeers"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "bfdprofiles"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "ipaddresspools"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "ipaddresspools/status"
+                    ],
+                    "verbs": [
+                        "update"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "bgpadvertisements"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "l2advertisements"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "communities"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "Role",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"Role\",\"metadata\":{\"annotations\":{},\"labels\":{\"app\":\"metallb\"},\"name\":\"pod-lister\",\"namespace\":\"metallb-system\"},\"rules\":[{\"apiGroups\":[\"\"],\"resources\":[\"pods\"],\"verbs\":[\"list\",\"get\"]},{\"apiGroups\":[\"\"],\"resources\":[\"secrets\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"\"],\"resources\":[\"configmaps\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"bfdprofiles\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"bgppeers\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"l2advertisements\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"bgpadvertisements\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"ipaddresspools\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"communities\"],\"verbs\":[\"get\",\"list\",\"watch\"]},{\"apiGroups\":[\"metallb.io\"],\"resources\":[\"servicebgpstatuses\",\"servicebgpstatuses/status\"],\"verbs\":[\"*\"]}]}\n"
+                },
+                "creationTimestamp": "2026-07-11T23:13:52Z",
+                "labels": {
+                    "app": "metallb"
+                },
+                "name": "pod-lister",
+                "namespace": "metallb-system",
+                "resourceVersion": "301732",
+                "uid": "936198ae-aa76-4def-9c39-effaae2ccb9c"
+            },
+            "rules": [
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "pods"
+                    ],
+                    "verbs": [
+                        "list",
+                        "get"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "secrets"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        ""
+                    ],
+                    "resources": [
+                        "configmaps"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "bfdprofiles"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "bgppeers"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "l2advertisements"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "bgpadvertisements"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "ipaddresspools"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "communities"
+                    ],
+                    "verbs": [
+                        "get",
+                        "list",
+                        "watch"
+                    ]
+                },
+                {
+                    "apiGroups": [
+                        "metallb.io"
+                    ],
+                    "resources": [
+                        "servicebgpstatuses",
+                        "servicebgpstatuses/status"
+                    ],
+                    "verbs": [
+                        "*"
+                    ]
+                }
+            ]
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}
