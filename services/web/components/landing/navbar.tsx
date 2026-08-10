@@ -45,15 +45,9 @@ export function Navbar() {
             <Link href="/features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Features
             </Link>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Pricing
-            </a>
             <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Docs
             </Link>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Blog
-            </a>
           </div>
 
           {/* Actions */}

@@ -136,17 +136,17 @@ export default function FeaturesPage() {
         >
           <h2 className="text-2xl font-bold mb-4">Ready to Understand Your RBAC?</h2>
           <p className="text-muted-foreground mb-8 leading-relaxed">
-            Start with KubeScope Base for free, or upgrade to Unlimited Pro for advanced features and integrations.
+            Upload an RBAC snapshot and see every permission in your cluster mapped out.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/app">
               <Button size="lg" className="rounded-lg w-full sm:w-auto">
-                Get Started Free
+                Get Started
               </Button>
             </Link>
-            <Link href="/#pricing">
+            <Link href="/docs/getting-started">
               <Button size="lg" variant="outline" className="rounded-lg w-full sm:w-auto">
-                View Pricing
+                Read the Docs
               </Button>
             </Link>
           </div>
