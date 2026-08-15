@@ -1,28 +1,33 @@
-apiVersion: policies.kyverno.io/v1
+apiVersion: kyverno.io/v1
 kind: Policy
 metadata:
   name: verify-cosign-keyless
   namespace: openkubescope
+
 spec:
   validationFailureAction: enforce
   background: false
+
   rules:
     - name: verify-image
+
       match:
         any:
           - resources:
               kinds:
                 - Pod
+
       verifyImages:
         - imageReferences:
             - "docker.io/kubescope-web/*"
             - "docker.io/kubescope-core-api/*"
             - "docker.io/kubescope-report-service/*"
             - "docker.io/kubescope-rbac-scanner-service/*"
+
           attestors:
-            - count: 4
-              entries:
+            - entries:
                 - keyless:
-                    identities:
-                      - issuer: "https://token.actions.githubusercontent.com"
-                        subject: https://github.com/Dhiman23/OpenKubeScope/.github/workflows/deploy-ci.yaml@refs/heads/dev
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/Dhiman23/OpenKubeScope/.github/workflows/deploy-ci.yaml@refs/heads/dev"
+                    rekor:
+                      url: "https://rekor.sigstore.dev"
