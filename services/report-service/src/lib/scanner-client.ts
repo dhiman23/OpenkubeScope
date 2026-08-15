@@ -140,39 +140,96 @@ function scanToRow(s: scannerProto.Scan): ScanRow {
   }
 }
 
-// Fetch the latest scan per cluster for a workspace, via the scanner gRPC API.
-// Cached in Redis when available.
+/**
+ * Fetch the latest scan per cluster for a workspace, via the scanner gRPC API.
+ *
+ * Deliberately NOT cached. "Which snapshot is newest" changes the moment a new
+ * snapshot is uploaded, and a cached answer here meant a freshly generated
+ * report could describe a snapshot that was no longer the latest while
+ * labelling itself current. Per-scan payloads are immutable and are cached
+ * instead (see fetchScansByIds).
+ */
 export async function fetchScansForClusters(workspaceId: string, clusters: string[]): Promise<ScanRow[]> {
-  const cacheKey = `scans:${workspaceId}:${[...clusters].sort().join(",")}`
+  const client = getScannerClient()
+  return new Promise<ScanRow[]>((resolve, reject) => {
+    client.listScansByCluster({ workspaceId, clusterNames: clusters, metaOnly: false }, (err, res) => {
+      if (err) return reject(err)
+      resolve((res.scans || []).map(scanToRow))
+    })
+  })
+}
+
+/** Metadata-only variant, used to work out which snapshot is a cluster's newest. */
+export async function fetchLatestScanMetaForClusters(workspaceId: string, clusters: string[]): Promise<ScanRow[]> {
+  const client = getScannerClient()
+  return new Promise<ScanRow[]>((resolve, reject) => {
+    client.listScansByCluster({ workspaceId, clusterNames: clusters, metaOnly: true }, (err, res) => {
+      if (err) return reject(err)
+      resolve((res.scans || []).map(scanToRow))
+    })
+  })
+}
+
+async function fetchScanById(workspaceId: string, scanId: string): Promise<ScanRow | null> {
+  const cacheKey = `scan:${workspaceId}:${scanId}`
   const cache = getRedis()
 
+  // A completed scan row never changes, so caching it by id is safe — unlike
+  // caching "the latest scan for this cluster", which was the previous key.
   if (cache) {
     try {
       const hit = await cache.get(cacheKey)
-      if (hit) return JSON.parse(hit) as ScanRow[]
+      if (hit) return JSON.parse(hit) as ScanRow
     } catch {
       // ignore cache read failure, fall through to gRPC
     }
   }
 
   const client = getScannerClient()
-  const scans = await new Promise<ScanRow[]>((resolve, reject) => {
-    client.listScansByCluster({ workspaceId, clusterNames: clusters, metaOnly: false }, (err, res) => {
-      if (err) return reject(err)
-      resolve((res.scans || []).map(scanToRow))
+  const scan = await new Promise<ScanRow | null>((resolve, reject) => {
+    client.getScan({ workspaceId, scanId }, (err, res) => {
+      if (err) {
+        // A deleted/unknown snapshot is a caller error, not a service failure:
+        // resolve to null so generation can report exactly which id is missing.
+        if (err.code === grpc.status.NOT_FOUND) return resolve(null)
+        return reject(err)
+      }
+      resolve(res.scan ? scanToRow(res.scan) : null)
     })
   })
 
-  if (cache) {
+  if (cache && scan) {
     const ttl = Number(process.env.SCAN_CACHE_TTL_SECONDS || 300)
     try {
-      await cache.set(cacheKey, JSON.stringify(scans), "EX", ttl)
+      await cache.set(cacheKey, JSON.stringify(scan), "EX", ttl)
     } catch {
       // ignore cache write failure
     }
   }
 
-  return scans
+  return scan
+}
+
+/**
+ * Fetch exactly the requested snapshots, in the requested order.
+ *
+ * This is the path a report takes when the caller named the scan the user had
+ * open. Missing ids are returned separately so the report fails loudly instead
+ * of quietly falling back to a different snapshot.
+ */
+export async function fetchScansByIds(
+  workspaceId: string,
+  scanIds: string[],
+): Promise<{ scans: ScanRow[]; missing: string[] }> {
+  const results = await Promise.all(scanIds.map(async (id) => [id, await fetchScanById(workspaceId, id)] as const))
+
+  const scans: ScanRow[] = []
+  const missing: string[] = []
+  for (const [id, scan] of results) {
+    if (scan) scans.push(scan)
+    else missing.push(id)
+  }
+  return { scans, missing }
 }
 
 // Invalidate cached scans for a workspace (call when scans change). Best-effort.
@@ -180,7 +237,7 @@ export async function invalidateScanCache(workspaceId: string): Promise<void> {
   const cache = getRedis()
   if (!cache) return
   try {
-    const keys = await cache.keys(`scans:${workspaceId}:*`)
+    const keys = [...(await cache.keys(`scans:${workspaceId}:*`)), ...(await cache.keys(`scan:${workspaceId}:*`))]
     if (keys.length) await cache.del(...keys)
   } catch {
     // ignore

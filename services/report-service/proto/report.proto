@@ -113,6 +113,57 @@ message TrendAnalysisSection {
   repeated kubescope.scanner.v1.RBACFinding resolved_risks = 4;
 }
 
+// ============================================
+// PROVENANCE
+// ============================================
+//
+// A report is a statement about ONE specific snapshot per cluster. Without
+// recording which snapshot, a stale report is indistinguishable from a report
+// on the currently selected scan — the exact failure this section exists to
+// prevent. Every generated report carries its sources, and the UI and the PDF
+// both render them.
+
+message SnapshotSource {
+  string scan_id = 1;
+  string cluster_name = 2;
+  string file_name = 3;
+  string snapshot_taken_at = 4; // ISO 8601 — when the snapshot itself was captured
+  // True when this scan was the newest completed snapshot of its cluster at
+  // generation time. False means the report describes an earlier snapshot.
+  bool is_latest = 5;
+  kubescope.scanner.v1.ScanTotals totals = 6;
+  kubescope.scanner.v1.ScanRiskCounts risk_counts = 7;
+  // Real namespaces only — cluster-scoped grants are counted separately, never
+  // as a namespace called "cluster-wide".
+  int32 namespace_count = 8;
+  int32 cluster_scoped_bindings = 9;
+  // Distinct subjects actually bound by this snapshot's bindings. Zero is a
+  // legitimate value (role-level findings with no bound subject) and is
+  // reported as "0 bound subjects evaluated", never as a bare "0 subjects".
+  int32 bound_subjects = 10;
+}
+
+// How the snapshots above were chosen.
+enum SelectionMode {
+  SELECTION_MODE_UNSPECIFIED = 0;
+  // Caller named exact scan ids (the scan the user had open).
+  EXPLICIT = 1;
+  // No ids supplied; report-service resolved the newest snapshot per cluster.
+  LATEST_PER_CLUSTER = 2;
+}
+
+message ReportProvenance {
+  repeated SnapshotSource sources = 1;
+  string generated_at = 2; // ISO 8601
+  // Human-readable scope, e.g. "All namespaces + cluster-wide permissions".
+  string scope = 3;
+  // Active filters applied to the report, already formatted for display.
+  repeated string filters = 4;
+  // False when ANY source is not its cluster's newest snapshot.
+  bool based_on_latest = 5;
+  SelectionMode selection_mode = 6;
+}
+
 message ReportData {
   string workspace_id = 1;
   string workspace_name = 2;
@@ -129,6 +180,26 @@ message ReportData {
   optional ComplianceSection compliance = 11;
   optional RiskAssessmentSection risk_assessment = 12;
   optional TrendAnalysisSection trend_analysis = 13;
+
+  ReportProvenance provenance = 14;
+  // Posture score for the analysed snapshot(s), same model as the app
+  // (services/web/lib/scoring.ts). Absent when it could not be computed.
+  optional SecurityScore security_score = 15;
+}
+
+message ScoreDomain {
+  string name = 1;
+  int32 weight = 2;
+  int32 score = 3;
+}
+
+message SecurityScore {
+  int32 score = 1;          // displayed (capped) score
+  int32 computed_score = 2; // uncapped domain-weighted score
+  string band = 3;          // Strong | Moderate | Weak | Critical
+  bool capped = 4;
+  string cap_reason = 5;
+  repeated ScoreDomain domains = 6;
 }
 
 // ============================================
@@ -145,7 +216,13 @@ message GenerateReportRequest {
   ReportType report_type = 5;
   ReportFormat format = 6;
   string report_name = 7;
+  // Exact snapshots to report on. When set, these are the ONLY scans read —
+  // the report describes the snapshot the user selected, not whatever happens
+  // to be newest. When empty, report-service resolves the newest snapshot per
+  // cluster and records the resolved ids in the report's provenance.
   repeated string scan_ids = 8;
+  // Optional, already-formatted active filters to record in provenance.
+  repeated string filters = 9;
 }
 
 message GenerateReportResponse {
@@ -172,6 +249,15 @@ message GetReportResponse {
   bytes file_content = 5;
   ReportFormat format = 6;
   string report_name = 7;
+  // Which snapshot(s) this report describes. Absent for reports generated
+  // before provenance tracking; the UI shows "not recorded" rather than
+  // assuming the report matches the currently selected scan.
+  ReportProvenance provenance = 8;
+  repeated string scan_ids = 9;
+  repeated string clusters = 10;
+  string created_at = 11;
+  kubescope.scanner.v1.ScanRiskCounts risk_summary = 12;
+  ReportType report_type = 13;
 }
 
 // Persisted report row (report-service owns the `report.reports` table).
@@ -189,6 +275,9 @@ message Report {
   string error_message = 11;
   string created_at = 12;
   string updated_at = 13;
+  // Persisted alongside the row (not inside report_data) so list views can show
+  // "which snapshot is this report about?" without loading the whole payload.
+  ReportProvenance provenance = 14;
 }
 
 message ListReportsRequest {

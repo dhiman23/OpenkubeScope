@@ -46,6 +46,36 @@ export async function waitForScan(
   throw new Error("Scan is taking longer than expected — check the clusters page in a moment.")
 }
 
+// Fetch one scan with its full dataset. Analysis routes address a scan by id
+// from the URL, so this is the single entry point they need.
+export async function getScan(workspaceId: string, scanId: string): Promise<Scan | null> {
+  try {
+    return (await scansApi.get(workspaceId, scanId)) as Scan
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Fetch the full scans for a bounded set of ids.
+ *
+ * List views load metadata only (no dataset), but the security score is
+ * computed per finding and cannot be derived from aggregate counts. Rather
+ * than show a differently-derived number in lists, callers hydrate just the
+ * snapshots whose score they display — normally one per cluster.
+ *
+ * A backend that persisted the score on the scan row would remove the need for
+ * this entirely; see the design spec's data-requirements appendix.
+ */
+export async function hydrateScans(workspaceId: string, scanIds: string[]): Promise<Map<string, Scan>> {
+  const entries = await Promise.all(
+    scanIds.map(async (id) => [id, await getScan(workspaceId, id)] as const),
+  )
+  const out = new Map<string, Scan>()
+  for (const [id, scan] of entries) if (scan) out.set(id, scan)
+  return out
+}
+
 export async function loadScans(workspaceId: string): Promise<Scan[]> {
   try {
     return (await scansApi.list(workspaceId, false)) as Scan[]

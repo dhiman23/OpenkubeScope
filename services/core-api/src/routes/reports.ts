@@ -22,7 +22,7 @@ reportsRouter.post("/:workspaceId/reports", async (req, res) => {
   const ws = await getOwnedWorkspace(req.user!.id, req.params.workspaceId)
   if (!ws) return res.status(404).json({ error: "Workspace not found" })
 
-  const { reportName, reportType, format, clusters, scanIds } = req.body ?? {}
+  const { reportName, reportType, format, clusters, scanIds, filters } = req.body ?? {}
   if (!Array.isArray(clusters) || clusters.length === 0) {
     return res.status(400).json({ error: "clusters (non-empty array) required" })
   }
@@ -36,7 +36,11 @@ reportsRouter.post("/:workspaceId/reports", async (req, res) => {
       reportType: reportProto.reportTypeFromJSON(reportType ?? "RBAC_AUDIT"),
       format: reportProto.reportFormatFromJSON(format ?? "JSON"),
       reportName: typeof reportName === "string" ? reportName : "Report",
+      // Naming the snapshots is what binds the report to the scan the user had
+      // open; without them report-service falls back to latest-per-cluster.
       scanIds: Array.isArray(scanIds) ? scanIds : [],
+      // Already-formatted filter labels, recorded in the report's provenance.
+      filters: Array.isArray(filters) ? filters.map(String) : [],
     })
 
     if (result.status === reportProto.ReportStatus.FAILED) {

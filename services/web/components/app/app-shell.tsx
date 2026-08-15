@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react"
 import { AppSidebar } from "@/components/app/sidebar"
 import { AppHeader } from "@/components/app/header"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { usePathname, useSearchParams } from "next/navigation"
 import { 
   getWorkspaces, 
@@ -187,18 +187,10 @@ export function AppShell({
             className="flex flex-col min-h-screen"
           >
             <AppHeader />
-            <AnimatePresence mode="wait">
-              <motion.main
-                key={pathname}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="p-6 flex-1"
-              >
-                {children}
-              </motion.main>
-            </AnimatePresence>
+            {/* No page-level enter/exit animation: these screens are reloaded
+                dozens of times a day and a 300ms fade on every navigation is
+                latency the operator pays for nothing. */}
+            <main className="p-6 flex-1">{children}</main>
           </motion.div>
         </div>
 

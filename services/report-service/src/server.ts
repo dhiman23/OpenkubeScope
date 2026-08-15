@@ -16,8 +16,8 @@ import {
   deleteScheduledReport,
   toggleScheduledReport,
 } from "./lib/scheduled-repository"
-import { reportRowToProto, scheduledRowToProto } from "./lib/proto-mapper"
-import { reportTypeFromProto, reportFormatFromProto, reportFormatToProto, reportStatusToProto, scheduleFrequencyFromProto } from "./lib/enums"
+import { reportRowToProto, scheduledRowToProto, provenanceToProto } from "./lib/proto-mapper"
+import { reportTypeFromProto, reportTypeToProto, reportFormatFromProto, reportFormatToProto, reportStatusToProto, scheduleFrequencyFromProto } from "./lib/enums"
 import { closeClients } from "./lib/scanner-client"
 import { closePool, getPool } from "./lib/db"
 import { runMigrations } from "./lib/migrate"
@@ -46,6 +46,7 @@ const handlers: ReportServiceServer = {
         format: reportFormatFromProto[r.format] || "JSON",
         reportName: r.reportName || "Report",
         scanIds: r.scanIds,
+        filters: r.filters,
       })
 
       callback(null, {
@@ -84,6 +85,12 @@ const handlers: ReportServiceServer = {
         fileContent: file?.content || Buffer.alloc(0),
         format: reportFormatToProto[row.format],
         reportName: row.report_name,
+        provenance: provenanceToProto(row.provenance),
+        scanIds: row.scan_ids,
+        clusters: row.clusters,
+        createdAt: row.created_at,
+        riskSummary: row.risk_summary,
+        reportType: reportTypeToProto[row.report_type],
       })
     } catch (err) {
       callback({ code: grpc.status.INTERNAL, message: toMessage(err) })

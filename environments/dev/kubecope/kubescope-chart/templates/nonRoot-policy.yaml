@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: require-run-as-non-root
+  namespace: openkubescope
+  annotations:
+    pod-policies.kyverno.io/description: "This policy ensures that all containers in a pod run as a non-root user."
+spec:
+  validationFailureAction: enforce
+  background: true
+
+  rules:
+    - name: validate-run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+
+      validate:
+        message: "Containers and Pods must run as a non-root user."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+            containers:
+              - securityContext:
+                  runAsNonRoot: true

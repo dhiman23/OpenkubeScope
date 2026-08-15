@@ -5,6 +5,30 @@
 
 import { reportsApi } from "./api-client"
 
+/** Which snapshot(s) a report describes — see components/reports/report-provenance. */
+export interface SnapshotSource {
+  scan_id: string
+  cluster_name: string
+  file_name: string
+  snapshot_taken_at: string
+  /** Was this the newest snapshot of its cluster when the report was made? */
+  is_latest: boolean
+  totals: { subjects: number; roles: number; bindings: number }
+  risk_counts: { critical: number; high: number; medium: number; low: number }
+  namespace_count: number
+  cluster_scoped_bindings: number
+  bound_subjects: number
+}
+
+export interface ReportProvenance {
+  sources: SnapshotSource[]
+  generated_at: string
+  scope: string
+  filters: string[]
+  based_on_latest: boolean
+  selection_mode: "explicit" | "latest_per_cluster"
+}
+
 export interface Report {
   id: string
   workspace_id: string
@@ -19,6 +43,8 @@ export interface Report {
   file_url: string | null
   file_size: string | null
   error_message: string | null
+  /** Null for reports generated before provenance tracking existed. */
+  provenance: ReportProvenance | null
   created_at: string
   updated_at: string
 }
@@ -40,6 +66,8 @@ export async function generateReport(
     format: Report["format"]
     clusters: string[]
     scan_ids?: string[]
+    /** Already-formatted filter labels, recorded in the report's provenance. */
+    filters?: string[]
   },
 ): Promise<{ reportId: string; fileSize: string }> {
   const res = await reportsApi.generate(workspaceId, {
@@ -48,6 +76,7 @@ export async function generateReport(
     format: params.format,
     clusters: params.clusters,
     scanIds: params.scan_ids,
+    filters: params.filters,
   })
   return { reportId: res.reportId, fileSize: res.fileSize }
 }
