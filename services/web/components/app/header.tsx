@@ -2,7 +2,6 @@
 
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -17,16 +16,16 @@ import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useSidebar, useWorkspace } from "./app-shell"
-import { cn as classNameMerge } from "@/lib/utils"
 import { setActiveWorkspaceId, type Workspace } from "@/lib/workspace-manager"
 import { loadScans } from "@/lib/scan-storage"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { AvatarImage } from "@/components/ui/avatar"
+import { CommandPalette, useCommandPalette } from "./command-palette"
 
 export function AppHeader() {
   const { user, signOut } = useAuth()
   const { resolvedTheme, setTheme } = useTheme()
-  const [searchFocused, setSearchFocused] = useState(false)
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette()
   const [mounted, setMounted] = useState(false)
   const { toast } = useToast()
   const { isCollapsed, setIsCollapsed } = useSidebar()
@@ -70,8 +69,11 @@ export function AppHeader() {
     })
   }
 
+  // 56px rather than 64px: this bar carries search, workspace, theme and
+  // account only, and the height it gives back is analysis space on pages that
+  // are already dense.
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-border bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="h-full px-6 flex items-center justify-between gap-4">
         {/* Sidebar toggle + Global search */}
         <div className="flex items-center gap-2 flex-1">
@@ -84,27 +86,19 @@ export function AppHeader() {
             <Menu className="h-4 w-4" />
           </Button>
           
-          <motion.div 
-            className="relative flex-1 max-w-md"
-            animate={{ 
-              scale: searchFocused ? 1.02 : 1,
-            }}
-            transition={{ duration: 0.2 }}
+          {/* Opens the command palette. This used to be an input with a ⌘K hint
+              and no handler — a visible affordance that did nothing. */}
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="relative flex-1 max-w-md flex items-center gap-2 h-10 px-3 rounded-xl bg-muted/50 border border-transparent text-left text-sm text-muted-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search permissions, subjects, roles..."
-              className={classNameMerge(
-                "pl-10 h-10 rounded-xl bg-muted/50 border-transparent transition-all duration-300",
-                searchFocused && "ring-2 ring-primary/50 border-primary/30 bg-background"
-              )}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-            />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+            <Search className="w-4 h-4 shrink-0" />
+            <span className="flex-1 truncate">Search clusters, snapshots, actions…</span>
+            <kbd className="hidden md:inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
             </kbd>
-          </motion.div>
+          </button>
         </div>
 
         {/* Actions */}
@@ -238,6 +232,8 @@ export function AppHeader() {
           </DropdownMenu>
         </div>
       </div>
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>
   )
 }

@@ -163,6 +163,48 @@ export function reportStatusToJSON(object: ReportStatus): string {
   }
 }
 
+/** How the snapshots above were chosen. */
+export enum SelectionMode {
+  SELECTION_MODE_UNSPECIFIED = 0,
+  /** EXPLICIT - Caller named exact scan ids (the scan the user had open). */
+  EXPLICIT = 1,
+  /** LATEST_PER_CLUSTER - No ids supplied; report-service resolved the newest snapshot per cluster. */
+  LATEST_PER_CLUSTER = 2,
+  UNRECOGNIZED = -1,
+}
+
+export function selectionModeFromJSON(object: any): SelectionMode {
+  switch (object) {
+    case 0:
+    case "SELECTION_MODE_UNSPECIFIED":
+      return SelectionMode.SELECTION_MODE_UNSPECIFIED;
+    case 1:
+    case "EXPLICIT":
+      return SelectionMode.EXPLICIT;
+    case 2:
+    case "LATEST_PER_CLUSTER":
+      return SelectionMode.LATEST_PER_CLUSTER;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return SelectionMode.UNRECOGNIZED;
+  }
+}
+
+export function selectionModeToJSON(object: SelectionMode): string {
+  switch (object) {
+    case SelectionMode.SELECTION_MODE_UNSPECIFIED:
+      return "SELECTION_MODE_UNSPECIFIED";
+    case SelectionMode.EXPLICIT:
+      return "EXPLICIT";
+    case SelectionMode.LATEST_PER_CLUSTER:
+      return "LATEST_PER_CLUSTER";
+    case SelectionMode.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export enum ScheduleFrequency {
   SCHEDULE_FREQUENCY_UNSPECIFIED = 0,
   DAILY = 1,
@@ -286,6 +328,48 @@ export interface TrendAnalysisSection {
   resolvedRisks: RBACFinding[];
 }
 
+export interface SnapshotSource {
+  scanId: string;
+  clusterName: string;
+  fileName: string;
+  /** ISO 8601 — when the snapshot itself was captured */
+  snapshotTakenAt: string;
+  /**
+   * True when this scan was the newest completed snapshot of its cluster at
+   * generation time. False means the report describes an earlier snapshot.
+   */
+  isLatest: boolean;
+  totals?: ScanTotals | undefined;
+  riskCounts?:
+    | ScanRiskCounts
+    | undefined;
+  /**
+   * Real namespaces only — cluster-scoped grants are counted separately, never
+   * as a namespace called "cluster-wide".
+   */
+  namespaceCount: number;
+  clusterScopedBindings: number;
+  /**
+   * Distinct subjects actually bound by this snapshot's bindings. Zero is a
+   * legitimate value (role-level findings with no bound subject) and is
+   * reported as "0 bound subjects evaluated", never as a bare "0 subjects".
+   */
+  boundSubjects: number;
+}
+
+export interface ReportProvenance {
+  sources: SnapshotSource[];
+  /** ISO 8601 */
+  generatedAt: string;
+  /** Human-readable scope, e.g. "All namespaces + cluster-wide permissions". */
+  scope: string;
+  /** Active filters applied to the report, already formatted for display. */
+  filters: string[];
+  /** False when ANY source is not its cluster's newest snapshot. */
+  basedOnLatest: boolean;
+  selectionMode: SelectionMode;
+}
+
 export interface ReportData {
   workspaceId: string;
   workspaceName: string;
@@ -302,6 +386,32 @@ export interface ReportData {
   compliance?: ComplianceSection | undefined;
   riskAssessment?: RiskAssessmentSection | undefined;
   trendAnalysis?: TrendAnalysisSection | undefined;
+  provenance?:
+    | ReportProvenance
+    | undefined;
+  /**
+   * Posture score for the analysed snapshot(s), same model as the app
+   * (services/web/lib/scoring.ts). Absent when it could not be computed.
+   */
+  securityScore?: SecurityScore | undefined;
+}
+
+export interface ScoreDomain {
+  name: string;
+  weight: number;
+  score: number;
+}
+
+export interface SecurityScore {
+  /** displayed (capped) score */
+  score: number;
+  /** uncapped domain-weighted score */
+  computedScore: number;
+  /** Strong | Moderate | Weak | Critical */
+  band: string;
+  capped: boolean;
+  capReason: string;
+  domains: ScoreDomain[];
 }
 
 export interface GenerateReportRequest {
@@ -316,7 +426,15 @@ export interface GenerateReportRequest {
   reportType: ReportType;
   format: ReportFormat;
   reportName: string;
+  /**
+   * Exact snapshots to report on. When set, these are the ONLY scans read —
+   * the report describes the snapshot the user selected, not whatever happens
+   * to be newest. When empty, report-service resolves the newest snapshot per
+   * cluster and records the resolved ids in the report's provenance.
+   */
   scanIds: string[];
+  /** Optional, already-formatted active filters to record in provenance. */
+  filters: string[];
 }
 
 export interface GenerateReportResponse {
@@ -346,6 +464,17 @@ export interface GetReportResponse {
   fileContent: Buffer;
   format: ReportFormat;
   reportName: string;
+  /**
+   * Which snapshot(s) this report describes. Absent for reports generated
+   * before provenance tracking; the UI shows "not recorded" rather than
+   * assuming the report matches the currently selected scan.
+   */
+  provenance?: ReportProvenance | undefined;
+  scanIds: string[];
+  clusters: string[];
+  createdAt: string;
+  riskSummary?: ScanRiskCounts | undefined;
+  reportType: ReportType;
 }
 
 /** Persisted report row (report-service owns the `report.reports` table). */
@@ -363,6 +492,11 @@ export interface Report {
   errorMessage: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Persisted alongside the row (not inside report_data) so list views can show
+   * "which snapshot is this report about?" without loading the whole payload.
+   */
+  provenance?: ReportProvenance | undefined;
 }
 
 export interface ListReportsRequest {
@@ -1764,6 +1898,415 @@ export const TrendAnalysisSection: MessageFns<TrendAnalysisSection> = {
   },
 };
 
+function createBaseSnapshotSource(): SnapshotSource {
+  return {
+    scanId: "",
+    clusterName: "",
+    fileName: "",
+    snapshotTakenAt: "",
+    isLatest: false,
+    totals: undefined,
+    riskCounts: undefined,
+    namespaceCount: 0,
+    clusterScopedBindings: 0,
+    boundSubjects: 0,
+  };
+}
+
+export const SnapshotSource: MessageFns<SnapshotSource> = {
+  encode(message: SnapshotSource, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.scanId !== "") {
+      writer.uint32(10).string(message.scanId);
+    }
+    if (message.clusterName !== "") {
+      writer.uint32(18).string(message.clusterName);
+    }
+    if (message.fileName !== "") {
+      writer.uint32(26).string(message.fileName);
+    }
+    if (message.snapshotTakenAt !== "") {
+      writer.uint32(34).string(message.snapshotTakenAt);
+    }
+    if (message.isLatest !== false) {
+      writer.uint32(40).bool(message.isLatest);
+    }
+    if (message.totals !== undefined) {
+      ScanTotals.encode(message.totals, writer.uint32(50).fork()).join();
+    }
+    if (message.riskCounts !== undefined) {
+      ScanRiskCounts.encode(message.riskCounts, writer.uint32(58).fork()).join();
+    }
+    if (message.namespaceCount !== 0) {
+      writer.uint32(64).int32(message.namespaceCount);
+    }
+    if (message.clusterScopedBindings !== 0) {
+      writer.uint32(72).int32(message.clusterScopedBindings);
+    }
+    if (message.boundSubjects !== 0) {
+      writer.uint32(80).int32(message.boundSubjects);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SnapshotSource {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSnapshotSource();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.scanId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.clusterName = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.fileName = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.snapshotTakenAt = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.isLatest = reader.bool();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.totals = ScanTotals.decode(reader, reader.uint32());
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.riskCounts = ScanRiskCounts.decode(reader, reader.uint32());
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.namespaceCount = reader.int32();
+          continue;
+        }
+        case 9: {
+          if (tag !== 72) {
+            break;
+          }
+
+          message.clusterScopedBindings = reader.int32();
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.boundSubjects = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SnapshotSource {
+    return {
+      scanId: isSet(object.scanId)
+        ? globalThis.String(object.scanId)
+        : isSet(object.scan_id)
+        ? globalThis.String(object.scan_id)
+        : "",
+      clusterName: isSet(object.clusterName)
+        ? globalThis.String(object.clusterName)
+        : isSet(object.cluster_name)
+        ? globalThis.String(object.cluster_name)
+        : "",
+      fileName: isSet(object.fileName)
+        ? globalThis.String(object.fileName)
+        : isSet(object.file_name)
+        ? globalThis.String(object.file_name)
+        : "",
+      snapshotTakenAt: isSet(object.snapshotTakenAt)
+        ? globalThis.String(object.snapshotTakenAt)
+        : isSet(object.snapshot_taken_at)
+        ? globalThis.String(object.snapshot_taken_at)
+        : "",
+      isLatest: isSet(object.isLatest)
+        ? globalThis.Boolean(object.isLatest)
+        : isSet(object.is_latest)
+        ? globalThis.Boolean(object.is_latest)
+        : false,
+      totals: isSet(object.totals) ? ScanTotals.fromJSON(object.totals) : undefined,
+      riskCounts: isSet(object.riskCounts)
+        ? ScanRiskCounts.fromJSON(object.riskCounts)
+        : isSet(object.risk_counts)
+        ? ScanRiskCounts.fromJSON(object.risk_counts)
+        : undefined,
+      namespaceCount: isSet(object.namespaceCount)
+        ? globalThis.Number(object.namespaceCount)
+        : isSet(object.namespace_count)
+        ? globalThis.Number(object.namespace_count)
+        : 0,
+      clusterScopedBindings: isSet(object.clusterScopedBindings)
+        ? globalThis.Number(object.clusterScopedBindings)
+        : isSet(object.cluster_scoped_bindings)
+        ? globalThis.Number(object.cluster_scoped_bindings)
+        : 0,
+      boundSubjects: isSet(object.boundSubjects)
+        ? globalThis.Number(object.boundSubjects)
+        : isSet(object.bound_subjects)
+        ? globalThis.Number(object.bound_subjects)
+        : 0,
+    };
+  },
+
+  toJSON(message: SnapshotSource): unknown {
+    const obj: any = {};
+    if (message.scanId !== "") {
+      obj.scanId = message.scanId;
+    }
+    if (message.clusterName !== "") {
+      obj.clusterName = message.clusterName;
+    }
+    if (message.fileName !== "") {
+      obj.fileName = message.fileName;
+    }
+    if (message.snapshotTakenAt !== "") {
+      obj.snapshotTakenAt = message.snapshotTakenAt;
+    }
+    if (message.isLatest !== false) {
+      obj.isLatest = message.isLatest;
+    }
+    if (message.totals !== undefined) {
+      obj.totals = ScanTotals.toJSON(message.totals);
+    }
+    if (message.riskCounts !== undefined) {
+      obj.riskCounts = ScanRiskCounts.toJSON(message.riskCounts);
+    }
+    if (message.namespaceCount !== 0) {
+      obj.namespaceCount = Math.round(message.namespaceCount);
+    }
+    if (message.clusterScopedBindings !== 0) {
+      obj.clusterScopedBindings = Math.round(message.clusterScopedBindings);
+    }
+    if (message.boundSubjects !== 0) {
+      obj.boundSubjects = Math.round(message.boundSubjects);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SnapshotSource>, I>>(base?: I): SnapshotSource {
+    return SnapshotSource.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SnapshotSource>, I>>(object: I): SnapshotSource {
+    const message = createBaseSnapshotSource();
+    message.scanId = object.scanId ?? "";
+    message.clusterName = object.clusterName ?? "";
+    message.fileName = object.fileName ?? "";
+    message.snapshotTakenAt = object.snapshotTakenAt ?? "";
+    message.isLatest = object.isLatest ?? false;
+    message.totals = (object.totals !== undefined && object.totals !== null)
+      ? ScanTotals.fromPartial(object.totals)
+      : undefined;
+    message.riskCounts = (object.riskCounts !== undefined && object.riskCounts !== null)
+      ? ScanRiskCounts.fromPartial(object.riskCounts)
+      : undefined;
+    message.namespaceCount = object.namespaceCount ?? 0;
+    message.clusterScopedBindings = object.clusterScopedBindings ?? 0;
+    message.boundSubjects = object.boundSubjects ?? 0;
+    return message;
+  },
+};
+
+function createBaseReportProvenance(): ReportProvenance {
+  return { sources: [], generatedAt: "", scope: "", filters: [], basedOnLatest: false, selectionMode: 0 };
+}
+
+export const ReportProvenance: MessageFns<ReportProvenance> = {
+  encode(message: ReportProvenance, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.sources) {
+      SnapshotSource.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.generatedAt !== "") {
+      writer.uint32(18).string(message.generatedAt);
+    }
+    if (message.scope !== "") {
+      writer.uint32(26).string(message.scope);
+    }
+    for (const v of message.filters) {
+      writer.uint32(34).string(v!);
+    }
+    if (message.basedOnLatest !== false) {
+      writer.uint32(40).bool(message.basedOnLatest);
+    }
+    if (message.selectionMode !== 0) {
+      writer.uint32(48).int32(message.selectionMode);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ReportProvenance {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseReportProvenance();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sources.push(SnapshotSource.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.generatedAt = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.scope = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.filters.push(reader.string());
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.basedOnLatest = reader.bool();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.selectionMode = reader.int32() as any;
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ReportProvenance {
+    return {
+      sources: globalThis.Array.isArray(object?.sources)
+        ? object.sources.map((e: any) => SnapshotSource.fromJSON(e))
+        : [],
+      generatedAt: isSet(object.generatedAt)
+        ? globalThis.String(object.generatedAt)
+        : isSet(object.generated_at)
+        ? globalThis.String(object.generated_at)
+        : "",
+      scope: isSet(object.scope) ? globalThis.String(object.scope) : "",
+      filters: globalThis.Array.isArray(object?.filters) ? object.filters.map((e: any) => globalThis.String(e)) : [],
+      basedOnLatest: isSet(object.basedOnLatest)
+        ? globalThis.Boolean(object.basedOnLatest)
+        : isSet(object.based_on_latest)
+        ? globalThis.Boolean(object.based_on_latest)
+        : false,
+      selectionMode: isSet(object.selectionMode)
+        ? selectionModeFromJSON(object.selectionMode)
+        : isSet(object.selection_mode)
+        ? selectionModeFromJSON(object.selection_mode)
+        : 0,
+    };
+  },
+
+  toJSON(message: ReportProvenance): unknown {
+    const obj: any = {};
+    if (message.sources?.length) {
+      obj.sources = message.sources.map((e) => SnapshotSource.toJSON(e));
+    }
+    if (message.generatedAt !== "") {
+      obj.generatedAt = message.generatedAt;
+    }
+    if (message.scope !== "") {
+      obj.scope = message.scope;
+    }
+    if (message.filters?.length) {
+      obj.filters = message.filters;
+    }
+    if (message.basedOnLatest !== false) {
+      obj.basedOnLatest = message.basedOnLatest;
+    }
+    if (message.selectionMode !== 0) {
+      obj.selectionMode = selectionModeToJSON(message.selectionMode);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ReportProvenance>, I>>(base?: I): ReportProvenance {
+    return ReportProvenance.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ReportProvenance>, I>>(object: I): ReportProvenance {
+    const message = createBaseReportProvenance();
+    message.sources = object.sources?.map((e) => SnapshotSource.fromPartial(e)) || [];
+    message.generatedAt = object.generatedAt ?? "";
+    message.scope = object.scope ?? "";
+    message.filters = object.filters?.map((e) => e) || [];
+    message.basedOnLatest = object.basedOnLatest ?? false;
+    message.selectionMode = object.selectionMode ?? 0;
+    return message;
+  },
+};
+
 function createBaseReportData(): ReportData {
   return {
     workspaceId: "",
@@ -1779,6 +2322,8 @@ function createBaseReportData(): ReportData {
     compliance: undefined,
     riskAssessment: undefined,
     trendAnalysis: undefined,
+    provenance: undefined,
+    securityScore: undefined,
   };
 }
 
@@ -1822,6 +2367,12 @@ export const ReportData: MessageFns<ReportData> = {
     }
     if (message.trendAnalysis !== undefined) {
       TrendAnalysisSection.encode(message.trendAnalysis, writer.uint32(106).fork()).join();
+    }
+    if (message.provenance !== undefined) {
+      ReportProvenance.encode(message.provenance, writer.uint32(114).fork()).join();
+    }
+    if (message.securityScore !== undefined) {
+      SecurityScore.encode(message.securityScore, writer.uint32(122).fork()).join();
     }
     return writer;
   },
@@ -1937,6 +2488,22 @@ export const ReportData: MessageFns<ReportData> = {
           message.trendAnalysis = TrendAnalysisSection.decode(reader, reader.uint32());
           continue;
         }
+        case 14: {
+          if (tag !== 114) {
+            break;
+          }
+
+          message.provenance = ReportProvenance.decode(reader, reader.uint32());
+          continue;
+        }
+        case 15: {
+          if (tag !== 122) {
+            break;
+          }
+
+          message.securityScore = SecurityScore.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -1991,6 +2558,12 @@ export const ReportData: MessageFns<ReportData> = {
         : isSet(object.trend_analysis)
         ? TrendAnalysisSection.fromJSON(object.trend_analysis)
         : undefined,
+      provenance: isSet(object.provenance) ? ReportProvenance.fromJSON(object.provenance) : undefined,
+      securityScore: isSet(object.securityScore)
+        ? SecurityScore.fromJSON(object.securityScore)
+        : isSet(object.security_score)
+        ? SecurityScore.fromJSON(object.security_score)
+        : undefined,
     };
   },
 
@@ -2035,6 +2608,12 @@ export const ReportData: MessageFns<ReportData> = {
     if (message.trendAnalysis !== undefined) {
       obj.trendAnalysis = TrendAnalysisSection.toJSON(message.trendAnalysis);
     }
+    if (message.provenance !== undefined) {
+      obj.provenance = ReportProvenance.toJSON(message.provenance);
+    }
+    if (message.securityScore !== undefined) {
+      obj.securityScore = SecurityScore.toJSON(message.securityScore);
+    }
     return obj;
   },
 
@@ -2066,6 +2645,252 @@ export const ReportData: MessageFns<ReportData> = {
     message.trendAnalysis = (object.trendAnalysis !== undefined && object.trendAnalysis !== null)
       ? TrendAnalysisSection.fromPartial(object.trendAnalysis)
       : undefined;
+    message.provenance = (object.provenance !== undefined && object.provenance !== null)
+      ? ReportProvenance.fromPartial(object.provenance)
+      : undefined;
+    message.securityScore = (object.securityScore !== undefined && object.securityScore !== null)
+      ? SecurityScore.fromPartial(object.securityScore)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseScoreDomain(): ScoreDomain {
+  return { name: "", weight: 0, score: 0 };
+}
+
+export const ScoreDomain: MessageFns<ScoreDomain> = {
+  encode(message: ScoreDomain, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.weight !== 0) {
+      writer.uint32(16).int32(message.weight);
+    }
+    if (message.score !== 0) {
+      writer.uint32(24).int32(message.score);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ScoreDomain {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseScoreDomain();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.weight = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.score = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ScoreDomain {
+    return {
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      weight: isSet(object.weight) ? globalThis.Number(object.weight) : 0,
+      score: isSet(object.score) ? globalThis.Number(object.score) : 0,
+    };
+  },
+
+  toJSON(message: ScoreDomain): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.weight !== 0) {
+      obj.weight = Math.round(message.weight);
+    }
+    if (message.score !== 0) {
+      obj.score = Math.round(message.score);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ScoreDomain>, I>>(base?: I): ScoreDomain {
+    return ScoreDomain.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ScoreDomain>, I>>(object: I): ScoreDomain {
+    const message = createBaseScoreDomain();
+    message.name = object.name ?? "";
+    message.weight = object.weight ?? 0;
+    message.score = object.score ?? 0;
+    return message;
+  },
+};
+
+function createBaseSecurityScore(): SecurityScore {
+  return { score: 0, computedScore: 0, band: "", capped: false, capReason: "", domains: [] };
+}
+
+export const SecurityScore: MessageFns<SecurityScore> = {
+  encode(message: SecurityScore, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.score !== 0) {
+      writer.uint32(8).int32(message.score);
+    }
+    if (message.computedScore !== 0) {
+      writer.uint32(16).int32(message.computedScore);
+    }
+    if (message.band !== "") {
+      writer.uint32(26).string(message.band);
+    }
+    if (message.capped !== false) {
+      writer.uint32(32).bool(message.capped);
+    }
+    if (message.capReason !== "") {
+      writer.uint32(42).string(message.capReason);
+    }
+    for (const v of message.domains) {
+      ScoreDomain.encode(v!, writer.uint32(50).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SecurityScore {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSecurityScore();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.score = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.computedScore = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.band = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.capped = reader.bool();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.capReason = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.domains.push(ScoreDomain.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SecurityScore {
+    return {
+      score: isSet(object.score) ? globalThis.Number(object.score) : 0,
+      computedScore: isSet(object.computedScore)
+        ? globalThis.Number(object.computedScore)
+        : isSet(object.computed_score)
+        ? globalThis.Number(object.computed_score)
+        : 0,
+      band: isSet(object.band) ? globalThis.String(object.band) : "",
+      capped: isSet(object.capped) ? globalThis.Boolean(object.capped) : false,
+      capReason: isSet(object.capReason)
+        ? globalThis.String(object.capReason)
+        : isSet(object.cap_reason)
+        ? globalThis.String(object.cap_reason)
+        : "",
+      domains: globalThis.Array.isArray(object?.domains) ? object.domains.map((e: any) => ScoreDomain.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: SecurityScore): unknown {
+    const obj: any = {};
+    if (message.score !== 0) {
+      obj.score = Math.round(message.score);
+    }
+    if (message.computedScore !== 0) {
+      obj.computedScore = Math.round(message.computedScore);
+    }
+    if (message.band !== "") {
+      obj.band = message.band;
+    }
+    if (message.capped !== false) {
+      obj.capped = message.capped;
+    }
+    if (message.capReason !== "") {
+      obj.capReason = message.capReason;
+    }
+    if (message.domains?.length) {
+      obj.domains = message.domains.map((e) => ScoreDomain.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SecurityScore>, I>>(base?: I): SecurityScore {
+    return SecurityScore.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<SecurityScore>, I>>(object: I): SecurityScore {
+    const message = createBaseSecurityScore();
+    message.score = object.score ?? 0;
+    message.computedScore = object.computedScore ?? 0;
+    message.band = object.band ?? "";
+    message.capped = object.capped ?? false;
+    message.capReason = object.capReason ?? "";
+    message.domains = object.domains?.map((e) => ScoreDomain.fromPartial(e)) || [];
     return message;
   },
 };
@@ -2080,6 +2905,7 @@ function createBaseGenerateReportRequest(): GenerateReportRequest {
     format: 0,
     reportName: "",
     scanIds: [],
+    filters: [],
   };
 }
 
@@ -2108,6 +2934,9 @@ export const GenerateReportRequest: MessageFns<GenerateReportRequest> = {
     }
     for (const v of message.scanIds) {
       writer.uint32(66).string(v!);
+    }
+    for (const v of message.filters) {
+      writer.uint32(74).string(v!);
     }
     return writer;
   },
@@ -2183,6 +3012,14 @@ export const GenerateReportRequest: MessageFns<GenerateReportRequest> = {
           message.scanIds.push(reader.string());
           continue;
         }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.filters.push(reader.string());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2226,6 +3063,7 @@ export const GenerateReportRequest: MessageFns<GenerateReportRequest> = {
         : globalThis.Array.isArray(object?.scan_ids)
         ? object.scan_ids.map((e: any) => globalThis.String(e))
         : [],
+      filters: globalThis.Array.isArray(object?.filters) ? object.filters.map((e: any) => globalThis.String(e)) : [],
     };
   },
 
@@ -2255,6 +3093,9 @@ export const GenerateReportRequest: MessageFns<GenerateReportRequest> = {
     if (message.scanIds?.length) {
       obj.scanIds = message.scanIds;
     }
+    if (message.filters?.length) {
+      obj.filters = message.filters;
+    }
     return obj;
   },
 
@@ -2271,6 +3112,7 @@ export const GenerateReportRequest: MessageFns<GenerateReportRequest> = {
     message.format = object.format ?? 0;
     message.reportName = object.reportName ?? "";
     message.scanIds = object.scanIds?.map((e) => e) || [];
+    message.filters = object.filters?.map((e) => e) || [];
     return message;
   },
 };
@@ -2537,6 +3379,12 @@ function createBaseGetReportResponse(): GetReportResponse {
     fileContent: Buffer.alloc(0),
     format: 0,
     reportName: "",
+    provenance: undefined,
+    scanIds: [],
+    clusters: [],
+    createdAt: "",
+    riskSummary: undefined,
+    reportType: 0,
   };
 }
 
@@ -2562,6 +3410,24 @@ export const GetReportResponse: MessageFns<GetReportResponse> = {
     }
     if (message.reportName !== "") {
       writer.uint32(58).string(message.reportName);
+    }
+    if (message.provenance !== undefined) {
+      ReportProvenance.encode(message.provenance, writer.uint32(66).fork()).join();
+    }
+    for (const v of message.scanIds) {
+      writer.uint32(74).string(v!);
+    }
+    for (const v of message.clusters) {
+      writer.uint32(82).string(v!);
+    }
+    if (message.createdAt !== "") {
+      writer.uint32(90).string(message.createdAt);
+    }
+    if (message.riskSummary !== undefined) {
+      ScanRiskCounts.encode(message.riskSummary, writer.uint32(98).fork()).join();
+    }
+    if (message.reportType !== 0) {
+      writer.uint32(104).int32(message.reportType);
     }
     return writer;
   },
@@ -2629,6 +3495,54 @@ export const GetReportResponse: MessageFns<GetReportResponse> = {
           message.reportName = reader.string();
           continue;
         }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.provenance = ReportProvenance.decode(reader, reader.uint32());
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.scanIds.push(reader.string());
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.clusters.push(reader.string());
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.createdAt = reader.string();
+          continue;
+        }
+        case 12: {
+          if (tag !== 98) {
+            break;
+          }
+
+          message.riskSummary = ScanRiskCounts.decode(reader, reader.uint32());
+          continue;
+        }
+        case 13: {
+          if (tag !== 104) {
+            break;
+          }
+
+          message.reportType = reader.int32() as any;
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2667,6 +3581,30 @@ export const GetReportResponse: MessageFns<GetReportResponse> = {
         : isSet(object.report_name)
         ? globalThis.String(object.report_name)
         : "",
+      provenance: isSet(object.provenance) ? ReportProvenance.fromJSON(object.provenance) : undefined,
+      scanIds: globalThis.Array.isArray(object?.scanIds)
+        ? object.scanIds.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.scan_ids)
+        ? object.scan_ids.map((e: any) => globalThis.String(e))
+        : [],
+      clusters: globalThis.Array.isArray(object?.clusters)
+        ? object.clusters.map((e: any) => globalThis.String(e))
+        : [],
+      createdAt: isSet(object.createdAt)
+        ? globalThis.String(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.String(object.created_at)
+        : "",
+      riskSummary: isSet(object.riskSummary)
+        ? ScanRiskCounts.fromJSON(object.riskSummary)
+        : isSet(object.risk_summary)
+        ? ScanRiskCounts.fromJSON(object.risk_summary)
+        : undefined,
+      reportType: isSet(object.reportType)
+        ? reportTypeFromJSON(object.reportType)
+        : isSet(object.report_type)
+        ? reportTypeFromJSON(object.report_type)
+        : 0,
     };
   },
 
@@ -2693,6 +3631,24 @@ export const GetReportResponse: MessageFns<GetReportResponse> = {
     if (message.reportName !== "") {
       obj.reportName = message.reportName;
     }
+    if (message.provenance !== undefined) {
+      obj.provenance = ReportProvenance.toJSON(message.provenance);
+    }
+    if (message.scanIds?.length) {
+      obj.scanIds = message.scanIds;
+    }
+    if (message.clusters?.length) {
+      obj.clusters = message.clusters;
+    }
+    if (message.createdAt !== "") {
+      obj.createdAt = message.createdAt;
+    }
+    if (message.riskSummary !== undefined) {
+      obj.riskSummary = ScanRiskCounts.toJSON(message.riskSummary);
+    }
+    if (message.reportType !== 0) {
+      obj.reportType = reportTypeToJSON(message.reportType);
+    }
     return obj;
   },
 
@@ -2710,6 +3666,16 @@ export const GetReportResponse: MessageFns<GetReportResponse> = {
     message.fileContent = object.fileContent ?? Buffer.alloc(0);
     message.format = object.format ?? 0;
     message.reportName = object.reportName ?? "";
+    message.provenance = (object.provenance !== undefined && object.provenance !== null)
+      ? ReportProvenance.fromPartial(object.provenance)
+      : undefined;
+    message.scanIds = object.scanIds?.map((e) => e) || [];
+    message.clusters = object.clusters?.map((e) => e) || [];
+    message.createdAt = object.createdAt ?? "";
+    message.riskSummary = (object.riskSummary !== undefined && object.riskSummary !== null)
+      ? ScanRiskCounts.fromPartial(object.riskSummary)
+      : undefined;
+    message.reportType = object.reportType ?? 0;
     return message;
   },
 };
@@ -2729,6 +3695,7 @@ function createBaseReport(): Report {
     errorMessage: "",
     createdAt: "",
     updatedAt: "",
+    provenance: undefined,
   };
 }
 
@@ -2772,6 +3739,9 @@ export const Report: MessageFns<Report> = {
     }
     if (message.updatedAt !== "") {
       writer.uint32(106).string(message.updatedAt);
+    }
+    if (message.provenance !== undefined) {
+      ReportProvenance.encode(message.provenance, writer.uint32(114).fork()).join();
     }
     return writer;
   },
@@ -2887,6 +3857,14 @@ export const Report: MessageFns<Report> = {
           message.updatedAt = reader.string();
           continue;
         }
+        case 14: {
+          if (tag !== 114) {
+            break;
+          }
+
+          message.provenance = ReportProvenance.decode(reader, reader.uint32());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2949,6 +3927,7 @@ export const Report: MessageFns<Report> = {
         : isSet(object.updated_at)
         ? globalThis.String(object.updated_at)
         : "",
+      provenance: isSet(object.provenance) ? ReportProvenance.fromJSON(object.provenance) : undefined,
     };
   },
 
@@ -2993,6 +3972,9 @@ export const Report: MessageFns<Report> = {
     if (message.updatedAt !== "") {
       obj.updatedAt = message.updatedAt;
     }
+    if (message.provenance !== undefined) {
+      obj.provenance = ReportProvenance.toJSON(message.provenance);
+    }
     return obj;
   },
 
@@ -3016,6 +3998,9 @@ export const Report: MessageFns<Report> = {
     message.errorMessage = object.errorMessage ?? "";
     message.createdAt = object.createdAt ?? "";
     message.updatedAt = object.updatedAt ?? "";
+    message.provenance = (object.provenance !== undefined && object.provenance !== null)
+      ? ReportProvenance.fromPartial(object.provenance)
+      : undefined;
     return message;
   },
 };

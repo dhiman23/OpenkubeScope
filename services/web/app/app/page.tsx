@@ -1,516 +1,266 @@
 "use client"
 
-import { motion } from "framer-motion"
-import { MetricCard } from "@/components/app/metric-card"
-import { Users, Shield, Link2, AlertTriangle, Clock, ChevronRight, Upload, Sparkles, FileJson, FileArchive, FileText, CheckCircle, XCircle, Loader2, Download } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useState, useEffect, useMemo } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import {
-  type Scan,
-  loadScansMeta,
-  getWorkspaceMode,
-  setActiveScanId,
-} from "@/lib/rbac-scanner"
-import { getDisplayName, getActiveWorkspace } from "@/lib/workspace-manager"
-import { demoMetrics, demoScans, isDemoMode } from "@/lib/demo-data"
-import { getTimeAgo, getTotalRisks } from "@/lib/format-utils"
-import { loadReports } from "@/lib/report-storage"
-import type { Report } from "@/lib/report-storage"
+import { AlertTriangle, BookOpen, Check, Copy, Loader2, Server, Sparkles, Upload } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { getTimeAgo } from "@/lib/format-utils"
+import type { Scan } from "@/lib/rbac-scanner"
+import { hydrateScans, loadScansMeta } from "@/lib/scan-storage"
+import { getActiveWorkspace } from "@/lib/workspace-manager"
+import { groupScansIntoClusters, summarizeFleet } from "@/lib/clusters"
+import { ScoreRing } from "@/components/posture/score-ring"
+import { ClusterCard } from "@/components/fleet/cluster-card"
+import { SnapshotUploader } from "@/components/fleet/snapshot-uploader"
+import { UpgradeDialog } from "@/components/app/upgrade-dialog"
 import { UpgradeBanner } from "@/components/app/upgrade-banner"
 
-export default function DashboardPage() {
+const COLLECTOR_COMMAND = `kubectl get clusterroles,clusterrolebindings,roles,rolebindings \\
+  -A -o json > rbac-snapshot.json`
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-5 h-5 animate-spin" /></div>}>
+      <HomeContent />
+    </Suspense>
+  )
+}
+
+function HomeContent() {
   const searchParams = useSearchParams()
-  const isDemo = searchParams.get('demo') === 'true'
-  
-  const [displayName, setDisplayName] = useState<string | null>(null)
   const [scans, setScans] = useState<Scan[]>([])
-  const [activeScan, setActiveScan] = useState<Scan | null>(null)
-  const [workspaceMode, setWorkspaceMode] = useState<"demo" | "real" | null>(null)
-  const [recentReports, setRecentReports] = useState<Report[]>([])
+  // Full scans for each cluster's latest snapshot — scoring needs findings.
+  const [hydrated, setHydrated] = useState<Map<string, Scan>>(new Map())
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [uploadOpen, setUploadOpen] = useState(searchParams.get("upload") === "true")
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
-
-  useEffect(() => {
-    loadDashboardData()
-
-    // Debounce event-driven refreshes so cascading events (e.g. workspace
-    // change + scan update fired together) only trigger one reload.
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null
-    const handleWorkspaceChange = () => {
-      if (debounceTimer) clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(() => loadDashboardData(), 300)
-    }
-    window.addEventListener("kubescope-workspace-changed", handleWorkspaceChange)
-    window.addEventListener("kubescope-scan-updated", handleWorkspaceChange)
-
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer)
-      window.removeEventListener("kubescope-workspace-changed", handleWorkspaceChange)
-      window.removeEventListener("kubescope-scan-updated", handleWorkspaceChange)
-    }
-  }, [isDemo])
-
-  const loadDashboardData = async () => {
-    // If demo mode, load demo data
-    if (isDemo) {
-      setDisplayName("Demo User")
-      setWorkspaceMode("demo")
-      
-      // Convert demo scans to proper format
-      const formattedDemoScans = demoScans.map(scan => ({
-        id: scan.id,
-        fileName: scan.filename,
-        clusterName: scan.filename.replace('.json', '').replace(/-rbac$/, ''),
-        createdAt: scan.scan_date,
-        totals: {
-          subjects: scan.subjects_count,
-          roles: scan.roles_count,
-          bindings: scan.bindings_count,
-        },
-        riskCounts: {
-          critical: demoMetrics.criticalRisks,
-          high: demoMetrics.highRisks,
-          medium: demoMetrics.mediumRisks,
-          low: demoMetrics.lowRisks,
-        },
-      })) as Scan[]
-      
-      setScans(formattedDemoScans)
-      setActiveScan(formattedDemoScans[0])
-      return
-    }
-
-    // Regular mode
-    const name = await getDisplayName()
-    setDisplayName(name)
-
-    // Get active workspace first
+  const load = useCallback(async () => {
     const workspace = await getActiveWorkspace()
+    setWorkspaceId(workspace?.id ?? null)
     if (!workspace) {
       setScans([])
-      setActiveScan(null)
-      setWorkspaceMode(null)
+      setLoading(false)
       return
     }
+    const meta = await loadScansMeta(workspace.id)
+    setScans(meta)
+    setLoading(false)
 
-    // Load workspace mode and scans (workspace-aware)
-    const mode = await getWorkspaceMode()
-    setWorkspaceMode(mode)
+    const latestIds = groupScansIntoClusters(meta).map((group) => group.latest.scan.id)
+    setHydrated(await hydrateScans(workspace.id, latestIds))
+  }, [])
 
-    // Use metadata-only loader — skips the large scan_data JSONB column
-    const savedScans = await loadScansMeta(workspace.id)
-    setScans(savedScans)
+  useEffect(() => {
+    load()
+    const onWorkspaceChange = () => load()
+    window.addEventListener("kubescope-workspace-changed", onWorkspaceChange)
+    return () => window.removeEventListener("kubescope-workspace-changed", onWorkspaceChange)
+  }, [load])
 
-    // Load recent reports for dashboard display
-    try {
-      const reports = await loadReports(workspace.id)
-      setRecentReports(reports.slice(0, 5))
-    } catch (err) {
-      console.error("Failed to load reports:", err)
-    }
+  const clusters = useMemo(() => groupScansIntoClusters(scans, hydrated), [scans, hydrated])
+  const fleet = useMemo(() => summarizeFleet(clusters), [clusters])
 
-    // Pick active scan from the already-loaded list (no extra DB call)
-    if (savedScans.length > 0) {
-      setActiveScan(savedScans[0])
-      await setActiveScanId(savedScans[0].id)
-    } else {
-      // Workspace is empty - show empty state
-      setActiveScan(null)
-    }
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+      </div>
+    )
   }
 
-  // Memoize metrics - only recompute when activeScan changes
-  const metrics = useMemo(() => activeScan ? [
-    { title: "Total Subjects", value: activeScan.totals?.subjects || 0, icon: Users, color: "default" as const },
-    { title: "Total Roles", value: activeScan.totals?.roles || 0, icon: Shield, color: "success" as const },
-    { title: "Total Bindings", value: activeScan.totals?.bindings || 0, icon: Link2, color: "warning" as const },
-    { title: "Risk Findings", value: getTotalRisks(activeScan), icon: AlertTriangle, color: "destructive" as const },
-  ] : [
-    { title: "Total Subjects", value: 0, icon: Users, color: "default" as const },
-    { title: "Total Roles", value: 0, icon: Shield, color: "success" as const },
-    { title: "Total Bindings", value: 0, icon: Link2, color: "warning" as const },
-    { title: "Risk Findings", value: 0, icon: AlertTriangle, color: "destructive" as const },
-  ], [activeScan])
-
-
-  // Memoize risk distribution data - precompute once when activeScan changes
-  const riskDistribution = useMemo(() => {
-    if (!activeScan) return []
-    const total = getTotalRisks(activeScan)
-    return [
-      {
-        label: "Critical",
-        count: activeScan.riskCounts?.critical || 0,
-        color: "bg-destructive",
-        percentage: (activeScan.riskCounts?.critical || 0) > 0
-          ? Math.min(100, ((activeScan.riskCounts?.critical || 0) / Math.max(1, total)) * 100 * 3)
-          : 0
-      },
-      {
-        label: "High",
-        count: activeScan.riskCounts?.high || 0,
-        color: "bg-orange-500",
-        percentage: (activeScan.riskCounts?.high || 0) > 0
-          ? Math.min(100, ((activeScan.riskCounts?.high || 0) / Math.max(1, total)) * 100 * 2)
-          : 0
-      },
-      {
-        label: "Medium",
-        count: activeScan.riskCounts?.medium || 0,
-        color: "bg-warning",
-        percentage: (activeScan.riskCounts?.medium || 0) > 0
-          ? Math.min(100, ((activeScan.riskCounts?.medium || 0) / Math.max(1, total)) * 100 * 1.5)
-          : 0
-      },
-      {
-        label: "Low",
-        count: activeScan.riskCounts?.low || 0,
-        color: "bg-success",
-        percentage: (activeScan.riskCounts?.low || 0) > 0
-          ? Math.min(100, ((activeScan.riskCounts?.low || 0) / Math.max(1, total)) * 100)
-          : 0
-      },
-    ]
-  }, [activeScan])
+  // First run: nothing but the one thing the user needs to do. No zeroed metric
+  // cards, no empty charts — a dashboard of zeros teaches nothing and looks broken.
+  if (scans.length === 0) {
+    return (
+      <>
+        <FirstRun onUpload={() => setUploadOpen(true)} />
+        <SnapshotUploader
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          onUploaded={load}
+          onScanLimit={() => setUpgradeOpen(true)}
+        />
+        <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} workspaceId={workspaceId} />
+      </>
+    )
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Demo Mode Banner */}
-      {isDemo && (
-        <motion.div
-          className="glass-card p-4 border-2 border-primary/50"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <div className="flex-1">
-              <p className="font-semibold">Demo Mode</p>
-              <p className="text-sm text-muted-foreground">
-                You're viewing KubeScope with sample data. Sign up to analyze your own clusters.
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Fleet overview</h1>
+          <p className="mt-1 text-sm text-muted-foreground tabular">
+            {fleet.clusterCount} cluster{fleet.clusterCount === 1 ? "" : "s"} · {fleet.snapshotCount} snapshot
+            {fleet.snapshotCount === 1 ? "" : "s"}
+            {fleet.lastScanAt && ` · last scan ${getTimeAgo(fleet.lastScanAt)}`}
+          </p>
+        </div>
+        <Button className="rounded-xl" onClick={() => setUploadOpen(true)}>
+          <Upload className="w-4 h-4 mr-2" />
+          Upload snapshot
+        </Button>
+      </div>
+
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="data-card p-5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Fleet score</p>
+          <div className="mt-2 flex items-center gap-3">
+            <ScoreRing score={fleet.fleetScore} size="md" showBand={false} />
+            <div>
+              <p className="text-2xl font-semibold tabular leading-none">
+                {fleet.fleetScore ?? <span className="text-muted-foreground">—</span>}
               </p>
+              {/* Worst cluster, not the mean: averaging hides the one broken cluster,
+                  which is the only one that matters. */}
+              <p className="mt-1 text-xs text-muted-foreground">worst cluster</p>
             </div>
-            <Link href="/auth/sign-up">
-              <Button size="sm" className="rounded-xl">
-                Sign Up
-              </Button>
-            </Link>
           </div>
-        </motion.div>
-      )}
+        </div>
 
-      {/* Page header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h1 className="text-3xl font-bold tracking-tight">
-          {displayName ? (
-            <>Welcome, {displayName}</>
-          ) : (
-            "Dashboard"
-          )}
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {activeScan ? (
-            <>Viewing scan: <span className="font-medium text-foreground">{activeScan.fileName}</span></>
-          ) : scans.length === 0 ? (
-            "This workspace has no scans yet. Upload a snapshot to get started."
-          ) : (
-            "Overview of your Kubernetes RBAC security posture"
-          )}
-        </p>
-      </motion.div>
+        <div className="data-card p-5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Critical</p>
+          <p className="mt-2 text-3xl font-semibold tabular text-sev-critical leading-none">{fleet.totalCritical}</p>
+          <p className="mt-2 text-xs text-muted-foreground">across all clusters</p>
+        </div>
 
-      {/* Metrics grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {metrics.map((metric, index) => (
-          <MetricCard
-            key={metric.title}
-            title={metric.title}
-            value={metric.value}
-            icon={metric.icon}
-            color={metric.color}
-            delay={index * 0.1}
-          />
+        <div className="data-card p-5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">High</p>
+          <p className="mt-2 text-3xl font-semibold tabular text-sev-high leading-none">{fleet.totalHigh}</p>
+          <p className="mt-2 text-xs text-muted-foreground">across all clusters</p>
+        </div>
+
+        <div className="data-card p-5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Needs attention</p>
+          {fleet.staleClusters > 0 ? (
+            <>
+              <p className="mt-2 text-3xl font-semibold tabular text-sev-medium leading-none">
+                {fleet.staleClusters}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground inline-flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                not scanned in over 7 days
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-3xl font-semibold tabular text-sev-pass leading-none">0</p>
+              <p className="mt-2 text-xs text-muted-foreground">all clusters recently scanned</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      <UpgradeBanner />
+
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold">Clusters</h2>
+        <Link href="/app/clusters" className="text-sm text-primary hover:underline">
+          Manage all clusters
+        </Link>
+      </div>
+
+      <div className="space-y-4">
+        {clusters.slice(0, 4).map((group) => (
+          <ClusterCard key={group.id} group={group} />
         ))}
       </div>
 
-      {/* Content grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Risk Overview */}
-        <motion.div
-          className="lg:col-span-2 glass-card p-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold">Risk Overview</h2>
-            <Link href="/app/risk-findings">
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
-                View All
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
-          
-          {/* Risk distribution - uses memoized riskDistribution */}
-          {activeScan ? (
-            <div className="space-y-4">
-              {riskDistribution.map((risk, index) => (
-                <motion.div
-                  key={risk.label}
-                  className="space-y-2"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                >
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{risk.label}</span>
-                    <span className="font-medium">{risk.count} findings</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <motion.div
-                      className={`h-full ${risk.color} rounded-full`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.max(risk.count > 0 ? 5 : 0, risk.percentage)}%` }}
-                      transition={{ duration: 1, delay: 0.6 + index * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                    />
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <motion.div 
-                className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-muted/50 to-muted/20 flex items-center justify-center mb-4"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.5, type: "spring" }}
-              >
-                <AlertTriangle className="w-7 h-7 text-muted-foreground" />
-              </motion.div>
-              <p className="font-medium mb-1">No scan data</p>
-              <p className="text-sm text-muted-foreground mb-4">Upload a snapshot to see risk overview</p>
-              <Link href="/app/clusters?upload=true">
-                <Button size="sm" variant="outline" className="rounded-xl bg-transparent">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Snapshot
-                </Button>
-              </Link>
-            </div>
-          )}
-        </motion.div>
+      {clusters.length > 4 && (
+        <Link href="/app/clusters">
+          <Button variant="outline" className="rounded-xl bg-transparent">
+            <Server className="w-4 h-4 mr-2" />
+            View all {clusters.length} clusters
+          </Button>
+        </Link>
+      )}
 
-        {/* Recent Scans */}
-        <motion.div
-          className="glass-card p-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold">Recent Scans</h2>
-            <Link href="/app/clusters">
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
-                View All
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
+      <SnapshotUploader
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        onUploaded={load}
+        onScanLimit={() => setUpgradeOpen(true)}
+      />
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} workspaceId={workspaceId} />
+    </div>
+  )
+}
 
-          {scans.length > 0 ? (
-            <div className="space-y-4">
-              {scans.slice(0, 4).map((scan, index) => (
-                <motion.div
-                  key={scan.id}
-                  className={`flex items-center gap-4 p-3 rounded-xl transition-colors cursor-pointer group ${
-                    activeScan?.id === scan.id 
-                      ? "bg-primary/10 border border-primary/20" 
-                      : "bg-muted/30 hover:bg-muted/50"
-                  }`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 + index * 0.1 }}
-                  whileHover={{ x: 4 }}
-                  onClick={() => {
-                    setActiveScan(scan)
-                    setActiveScanId(scan.id)
-                    // Dispatch custom event to notify components about active scan change
-                    window.dispatchEvent(new CustomEvent("kubescope-scan-updated", { detail: { scanId: scan.id } }))
-                  }}
-                >
-                  <div className="p-2 rounded-lg bg-muted">
-                    {scan.fileName?.endsWith('.json') ? (
-                      <FileJson className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <FileArchive className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{scan.fileName}</p>
-                    <p className="text-xs text-muted-foreground">{getTimeAgo(scan.createdAt)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      (scan.riskCounts?.critical || 0) > 0
-                        ? "bg-destructive/10 text-destructive"
-                        : (scan.riskCounts?.high || 0) > 0
-                        ? "bg-orange-500/10 text-orange-500"
-                        : getTotalRisks(scan) <= 5 
-                        ? "bg-success/10 text-success" 
-                        : "bg-warning/10 text-warning"
-                    }`}>
-                      {getTotalRisks(scan)} risks
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            /* Premium Empty state */
-            <div className="text-center py-8">
-              <motion.div 
-                className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.6, type: "spring" }}
-              >
-                <Sparkles className="w-7 h-7 text-primary" />
-              </motion.div>
-              <p className="font-medium mb-1">No scans yet</p>
-              <p className="text-sm text-muted-foreground mb-4">Upload your first RBAC snapshot</p>
-              <Link href="/app/clusters?upload=true">
-                <Button size="sm" className="rounded-xl">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Snapshot
-                </Button>
-              </Link>
-            </div>
-          )}
-        </motion.div>
+function FirstRun({ onUpload }: { onUpload: () => void }) {
+  const [copied, setCopied] = useState(false)
+  const [dragging, setDragging] = useState(false)
+
+  return (
+    // The whole page is the drop target, not just the dashed box — first-time
+    // users aim badly.
+    <div
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragging(false)
+        onUpload()
+      }}
+      className={cn(
+        "min-h-[70vh] flex flex-col items-center justify-center text-center rounded-3xl transition-colors",
+        dragging && "bg-primary/5 ring-2 ring-primary/40",
+      )}
+    >
+      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+        <Sparkles className="w-7 h-7 text-primary" />
       </div>
 
-      {!isDemo && <UpgradeBanner />}
+      <h1 className="mt-6 text-3xl font-semibold tracking-tight">Welcome to KubeScope</h1>
+      <p className="mt-2 text-muted-foreground">Analyze your Kubernetes RBAC security posture.</p>
 
-      {/* Recent Reports */}
-      {recentReports.length > 0 && (
-        <motion.div
-          className="glass-card p-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.55 }}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold">Recent Reports</h2>
-            <Link href="/app/reports">
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
-                View All
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
+      <button
+        type="button"
+        onClick={onUpload}
+        className="mt-8 w-full max-w-xl rounded-2xl border-2 border-dashed border-border hover:border-foreground/25 transition-colors p-10"
+      >
+        <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
+        <p className="mt-4 font-medium">Drop your RBAC snapshot here</p>
+        <p className="text-sm text-muted-foreground">or click to upload</p>
+        <p className="mt-3 text-xs text-muted-foreground">Supported: .json · .zip</p>
+      </button>
 
-          <div className="space-y-3">
-            {recentReports.map((report, index) => {
-              const statusIcon = report.status === "completed"
-                ? CheckCircle
-                : report.status === "failed"
-                ? XCircle
-                : Loader2
-              const statusColor = report.status === "completed"
-                ? "text-emerald-500"
-                : report.status === "failed"
-                ? "text-red-500"
-                : "text-blue-500"
-              const StatusIcon = statusIcon
+      <div className="mt-10 w-full max-w-xl text-left">
+        <p className="text-sm font-medium">Don&apos;t have a snapshot yet?</p>
+        <div className="mt-2 relative">
+          <pre className="text-xs bg-muted rounded-xl p-4 pr-12 overflow-x-auto">{COLLECTOR_COMMAND}</pre>
+          <button
+            type="button"
+            onClick={async () => {
+              await navigator.clipboard.writeText(COLLECTOR_COMMAND)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1600)
+            }}
+            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+            aria-label="Copy command"
+          >
+            {copied ? <Check className="w-4 h-4 text-sev-pass" /> : <Copy className="w-4 h-4" />}
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Read-only. Nothing leaves your cluster except this file.
+        </p>
+      </div>
 
-              return (
-                <motion.div
-                  key={report.id}
-                  className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 + index * 0.08 }}
-                >
-                  <div className="p-2 rounded-lg bg-muted">
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{report.report_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {report.format} &middot; {getTimeAgo(report.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusIcon className={`w-4 h-4 ${statusColor} ${report.status === "generating" ? "animate-spin" : ""}`} />
-                    {report.status === "completed" && report.risk_summary && (
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        report.risk_summary.critical > 0
-                          ? "bg-destructive/10 text-destructive"
-                          : report.risk_summary.high > 0
-                          ? "bg-orange-500/10 text-orange-500"
-                          : "bg-success/10 text-success"
-                      }`}>
-                        {report.risk_summary.critical + report.risk_summary.high + report.risk_summary.medium + report.risk_summary.low} findings
-                      </span>
-                    )}
-                    {report.status === "failed" && (
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-destructive/10 text-destructive">
-                        Failed
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Active Scan Details */}
-      {activeScan && activeScan.id !== "demo-scan" && (
-        <motion.div
-          className="glass-card p-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Active Scan Details</h2>
-            <Link href="/app/rbac-viewer">
-              <Button variant="outline" size="sm" className="rounded-xl bg-transparent">
-                View RBAC Data
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
-          
-          <div className="grid md:grid-cols-4 gap-6">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">File Name</p>
-              <p className="font-medium truncate">{activeScan.fileName}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Cluster</p>
-              <p className="font-medium">{activeScan.clusterName}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Scanned</p>
-              <p className="font-medium">{getTimeAgo(activeScan.createdAt)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Total Findings</p>
-              <p className="font-medium">{getTotalRisks(activeScan)} risks detected</p>
-            </div>
-          </div>
-        </motion.div>
-      )}
+      <div className="mt-8">
+        <Link href="/docs/getting-started">
+          <Button variant="ghost" className="rounded-xl">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Read the docs
+          </Button>
+        </Link>
+      </div>
     </div>
   )
 }

@@ -26,6 +26,9 @@ import {
   TrendingUp,
   TrendingDown,
   GitCompare,
+  Pause,
+  Play,
+  Settings2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,6 +61,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Suspense } from "react"
 import Loading from "@/components/ui/loading"
 import { loadReports, deleteReport, generateReport, downloadReport } from "@/lib/report-storage"
+import { ProvenanceLine } from "@/components/reports/report-provenance"
+import { cn } from "@/lib/utils"
 import type { Report } from "@/lib/report-storage"
 import { getActiveWorkspaceId, getActiveWorkspace } from "@/lib/workspace-manager"
 import { loadScansMeta } from "@/lib/scan-storage"
@@ -69,6 +74,7 @@ import {
   createScheduledReport,
   listScheduledReports,
   deleteScheduledReport,
+  toggleScheduledReport,
   type ScheduleFrequency,
   type ScheduledReport,
 } from "@/lib/scheduled-reports"
@@ -188,16 +194,22 @@ const ReportCard = React.memo(function ReportCard({
             </h3>
           </div>
 
-          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-3">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
             <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {new Date(report.created_at).toLocaleDateString()}
+              <Calendar className="w-3 h-3" aria-hidden="true" />
+              Generated {new Date(report.created_at).toLocaleDateString()}
             </span>
             <span className="flex items-center gap-1">
-              <FormatIcon className="w-3 h-3" />
+              <FormatIcon className="w-3 h-3" aria-hidden="true" />
               {format.label}
             </span>
             {report.file_size && <span>{report.file_size}</span>}
+          </div>
+
+          {/* Which snapshot this report describes — without it, an old report
+              is indistinguishable from one built from the current scan. */}
+          <div className="mb-3">
+            <ProvenanceLine provenance={report.provenance} />
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -219,19 +231,11 @@ const ReportCard = React.memo(function ReportCard({
           {report.status === "completed" && findings && (
             <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/50">
               <span className="text-xs text-muted-foreground">Findings:</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-red-500">
-                  {findings.critical} critical
-                </span>
-                <span className="text-xs text-orange-500">
-                  {findings.high} high
-                </span>
-                <span className="text-xs text-amber-500">
-                  {findings.medium} medium
-                </span>
-                <span className="text-xs text-blue-500">
-                  {findings.low} low
-                </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-sev-critical">Critical {findings.critical}</span>
+                <span className="text-xs text-sev-high">High {findings.high}</span>
+                <span className="text-xs text-sev-medium">Medium {findings.medium}</span>
+                <span className="text-xs text-sev-low">Low {findings.low}</span>
               </div>
             </div>
           )}
@@ -246,30 +250,44 @@ const ReportCard = React.memo(function ReportCard({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Icon-only controls carry a label and a tooltip: a bare glyph is a
+              guess, and the download is the primary action on this card. */}
           {report.status === "completed" && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              variant="outline"
+              size="sm"
+              className="rounded-xl bg-transparent"
+              title={`Download ${report.report_name} as ${format.label}`}
+              aria-label={`Download ${report.report_name} as ${format.label}`}
               onClick={() => onDownload(report)}
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-4 h-4 mr-1.5" aria-hidden="true" />
+              Download
             </Button>
           )}
           {report.status === "failed" && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              variant="outline"
+              size="sm"
+              className="rounded-xl bg-transparent"
+              title={`Regenerate ${report.report_name}`}
+              aria-label={`Regenerate ${report.report_name}`}
               onClick={() => onRegenerate(report)}
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4 mr-1.5" aria-hidden="true" />
+              Retry
             </Button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="w-4 h-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="More actions"
+                aria-label={`More actions for ${report.report_name}`}
+              >
+                <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -311,6 +329,10 @@ function NewReportDialog({
   onSchedule,
   isPremium,
   onRequestUpgrade,
+  open: controlledOpen,
+  onOpenChange,
+  template,
+  hideTrigger,
 }: {
   onGenerate: (params: {
     reportType: string
@@ -328,8 +350,24 @@ function NewReportDialog({
   }) => Promise<void>
   isPremium: boolean
   onRequestUpgrade: () => void
+  /**
+   * Controlled mode, used when editing an existing schedule. The dialog keeps
+   * its own state when these are omitted, so the "New report" trigger is
+   * unchanged.
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** Prefill from an existing schedule. */
+  template?: ScheduledReport | null
+  /** Hide the built-in trigger button when opened from elsewhere. */
+  hideTrigger?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = (value: boolean) => {
+    setUncontrolledOpen(value)
+    onOpenChange?.(value)
+  }
   const [reportType, setReportType] = useState<string>("")
   const [format, setFormat] = useState<string>(isPremium ? "PDF" : "CSV")
   const [selectedClusters, setSelectedClusters] = useState<string[]>([])
@@ -339,6 +377,19 @@ function NewReportDialog({
   const [scheduleEnabled, setScheduleEnabled] = useState(false)
   const [frequency, setFrequency] = useState<ScheduleFrequency>("weekly")
   const [slackWebhook, setSlackWebhook] = useState("")
+
+  // Prefill from the schedule being edited, so "Edit" starts from its settings
+  // rather than an empty form.
+  useEffect(() => {
+    if (!open || !template) return
+    setReportType(template.report_type)
+    setFormat(template.format)
+    setSelectedClusters(template.clusters)
+    setReportName(template.name)
+    setScheduleEnabled(true)
+    setFrequency(template.frequency as ScheduleFrequency)
+    setSlackWebhook(template.slack_webhook_url ?? "")
+  }, [open, template])
 
   // Load real clusters from scans
   useEffect(() => {
@@ -413,12 +464,14 @@ function NewReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      {!hideTrigger && (
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Plus className="w-4 h-4" />
           Generate Report
         </Button>
       </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Generate New Report</DialogTitle>
@@ -624,24 +677,52 @@ function NewReportDialog({
 // SCHEDULED REPORTS LIST
 // ============================================
 
+/**
+ * Human-readable schedule.
+ *
+ * "weekly" alone does not tell an operator when a report will actually land, so
+ * the cadence, the day and time, and the timezone it is expressed in are all
+ * stated — e.g. "Weekly · Thu 02:10 · Asia/Riyadh".
+ */
+function describeSchedule(frequency: string, nextRunAt: string): string {
+  const next = new Date(nextRunAt)
+  if (Number.isNaN(next.getTime())) return frequency
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const cadence = frequency.charAt(0).toUpperCase() + frequency.slice(1)
+  const time = next.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
+
+  if (frequency === "daily") return `${cadence} · ${time} · ${timeZone}`
+  if (frequency === "monthly") {
+    const day = next.toLocaleDateString(undefined, { day: "numeric" })
+    return `${cadence} · day ${day} · ${time} · ${timeZone}`
+  }
+  const weekday = next.toLocaleDateString(undefined, { weekday: "short" })
+  return `${cadence} · ${weekday} ${time} · ${timeZone}`
+}
+
 function ScheduledReportsList({
   schedules,
   onDelete,
+  onToggle,
+  onEdit,
 }: {
   schedules: ScheduledReport[]
   onDelete: (id: string) => void
+  onToggle: (schedule: ScheduledReport) => void
+  onEdit: (schedule: ScheduledReport) => void
 }) {
   if (schedules.length === 0) return null
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
-          <CalendarClock className="w-5 h-5 text-cyan-500" />
+        <h2 className="flex items-center gap-2 text-lg font-medium text-foreground">
+          <CalendarClock className="w-5 h-5 text-cyan-500" aria-hidden="true" />
           Scheduled reports
         </h2>
         <span className="text-xs text-muted-foreground">
-          {schedules.length} active
+          {schedules.filter((s) => s.enabled).length} of {schedules.length} active
         </span>
       </div>
       <div className="space-y-2">
@@ -651,15 +732,20 @@ function ScheduledReportsList({
           return (
             <div
               key={s.id}
-              className="p-3 rounded-xl border border-border/50 bg-card flex items-start justify-between gap-4"
+              className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border/50 bg-card p-3"
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-medium text-foreground truncate">
-                    {s.name}
-                  </h3>
-                  <Badge variant="secondary" className="text-[10px] uppercase">
-                    {s.frequency}
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-sm font-medium text-foreground">{s.name}</h3>
+                  {/* Paused schedules must not look identical to running ones. */}
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "text-[10px]",
+                      s.enabled ? "bg-sev-pass-bg text-sev-pass" : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {s.enabled ? "Active" : "Paused"}
                   </Badge>
                   <Badge variant="outline" className="text-[10px]">
                     {s.format}
@@ -670,26 +756,69 @@ function ScheduledReportsList({
                     </Badge>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-3">
-                  <span>Next run: {nextRun.toLocaleString()}</span>
+
+                <p className="text-xs font-medium text-foreground">
+                  {describeSchedule(s.frequency, s.next_run_at)}
+                </p>
+
+                <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span>{s.enabled ? `Next run ${nextRun.toLocaleString()}` : "Paused — no runs scheduled"}</span>
                   {last && (
                     <span>
-                      Last: {last.toLocaleDateString()}{" "}
-                      {s.last_run_status === "failed" && (
-                        <span className="text-red-500">(failed)</span>
-                      )}
+                      Last run {last.toLocaleDateString()}{" "}
+                      {s.last_run_status === "failed" && <span className="text-sev-critical">(failed)</span>}
                     </span>
                   )}
+                  <span>{s.clusters.join(", ")}</span>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onDelete(s.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+
+              {/* Edit, Pause and Delete are all visible: a lone trash icon
+                  offers destruction as the only available action. */}
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl bg-transparent"
+                  onClick={() => onEdit(s)}
+                  aria-label={`Edit schedule ${s.name}`}
+                  title="Edit this schedule"
+                >
+                  <Settings2 className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl bg-transparent"
+                  onClick={() => onToggle(s)}
+                  aria-label={`${s.enabled ? "Pause" : "Resume"} schedule ${s.name}`}
+                  title={s.enabled ? "Pause this schedule" : "Resume this schedule"}
+                >
+                  {s.enabled ? (
+                    <>
+                      <Pause className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                      Resume
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl text-muted-foreground hover:text-destructive"
+                  onClick={() => onDelete(s.id)}
+                  aria-label={`Delete schedule ${s.name}`}
+                  title="Delete this schedule"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                  Delete
+                </Button>
+              </div>
             </div>
           )
         })}
@@ -697,10 +826,6 @@ function ScheduledReportsList({
     </div>
   )
 }
-
-// ============================================
-// MAIN PAGE
-// ============================================
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([])
@@ -847,6 +972,48 @@ export default function ReportsPage() {
       }
     },
     [workspaceId, toast]
+  )
+
+  const [scheduleTemplate, setScheduleTemplate] = useState<ScheduledReport | null>(null)
+  const [newReportOpen, setNewReportOpen] = useState(false)
+
+  /** Pause or resume a schedule without destroying it. */
+  const handleToggleSchedule = useCallback(
+    async (schedule: ScheduledReport) => {
+      if (!workspaceId) return
+      const next = !schedule.enabled
+      try {
+        await toggleScheduledReport(workspaceId, schedule.id, next)
+        setScheduledReports((prev) => prev.map((s) => (s.id === schedule.id ? { ...s, enabled: next } : s)))
+        toast({ title: next ? "Schedule resumed" : "Schedule paused" })
+      } catch (err) {
+        toast({
+          title: next ? "Failed to resume schedule" : "Failed to pause schedule",
+          description: err instanceof Error ? err.message : "Unknown error",
+          variant: "destructive",
+        })
+      }
+    },
+    [workspaceId, toast],
+  )
+
+  /**
+   * Editing a schedule.
+   *
+   * The API has no update endpoint yet (only create/toggle/delete), so rather
+   * than show an Edit button that silently does nothing, this opens the new
+   * schedule dialog pre-filled and says plainly what will happen.
+   */
+  const handleEditSchedule = useCallback(
+    (schedule: ScheduledReport) => {
+      setScheduleTemplate(schedule)
+      setNewReportOpen(true)
+      toast({
+        title: "Editing a schedule creates a replacement",
+        description: `Adjust the settings and save; then delete "${schedule.name}" if you no longer need it.`,
+      })
+    },
+    [toast],
   )
 
   // Gated download — free users cannot download PDF
@@ -1088,6 +1255,23 @@ export default function ReportsPage() {
         <ScheduledReportsList
           schedules={scheduledReports}
           onDelete={handleDeleteSchedule}
+          onToggle={handleToggleSchedule}
+          onEdit={handleEditSchedule}
+        />
+
+        {/* Controlled instance used by "Edit" on a schedule. */}
+        <NewReportDialog
+          onGenerate={handleGenerateReport}
+          onSchedule={handleScheduleReport}
+          isPremium={isPremium}
+          onRequestUpgrade={() => setUpgradeOpen(true)}
+          open={newReportOpen}
+          onOpenChange={(value) => {
+            setNewReportOpen(value)
+            if (!value) setScheduleTemplate(null)
+          }}
+          template={scheduleTemplate}
+          hideTrigger
         />
 
         <UpgradeDialog

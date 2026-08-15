@@ -15,7 +15,10 @@
   --secondary: #f5f5f5;
   --secondary-foreground: #262626;
   --muted: #f5f5f5;
-  --muted-foreground: #737373;
+  /* Secondary text carries real information here (counts, scopes, "not
+     collected" explanations), so it is held above 7:1 on white rather than
+     sitting just over the 4.5:1 AA floor. */
+  --muted-foreground: #5c5c5c;
   --accent: #ecfeff;
   --accent-foreground: #262626;
   --destructive: #dc2626;
@@ -24,8 +27,10 @@
   --warning-foreground: #262626;
   --success: #10b981;
   --success-foreground: #fafafa;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
+  /* #e5e5e5 on white is ~1.2:1 — table rules and card edges effectively
+     disappeared, which matters when the border IS the row separator. */
+  --border: #d4d4d4;
+  --input: #d4d4d4;
   --ring: #0891b2;
   --chart-1: #0891b2;
   --chart-2: #14b8a6;
@@ -57,7 +62,9 @@
   --secondary: #262626;
   --secondary-foreground: #fafafa;
   --muted: #262626;
-  --muted-foreground: #a3a3a3;
+  /* Raised for the same reason as the light value: this is label and
+     explanation text, not decoration. */
+  --muted-foreground: #b0b0b0;
   --accent: #164e63;
   --accent-foreground: #fafafa;
   --destructive: #dc2626;
@@ -66,8 +73,8 @@
   --warning-foreground: #0a0a0a;
   --success: #10b981;
   --success-foreground: #0a0a0a;
-  --border: #262626;
-  --input: #262626;
+  --border: #3a3a3a;
+  --input: #3a3a3a;
   --ring: #22d3ee;
   --chart-1: #22d3ee;
   --chart-2: #14b8a6;
@@ -86,7 +93,59 @@
   --glass-border: rgba(38, 38, 38, 0.5);
 }
 
+/* Severity is a locked contract: these colours mean severity and nothing else.
+   Never use them decoratively — and never encode severity by colour alone, the
+   UI always pairs them with a glyph and a text label. */
+:root,
+.dark {
+  --sev-critical: #dc2626;
+  --sev-critical-bg: rgb(220 38 38 / 0.12);
+  --sev-high: #ea580c;
+  --sev-high-bg: rgb(234 88 12 / 0.12);
+  --sev-medium: #f59e0b;
+  --sev-medium-bg: rgb(245 158 11 / 0.12);
+  --sev-low: #3b82f6;
+  --sev-low-bg: rgb(59 130 246 / 0.12);
+  --sev-pass: #10b981;
+  --sev-pass-bg: rgb(16 185 129 / 0.12);
+
+  /* Posture bands */
+  --band-strong: #10b981;
+  --band-moderate: #f59e0b;
+  --band-weak: #ea580c;
+  --band-critical: #dc2626;
+
+  /* Motion — short and purposeful. See the motion policy in the design spec. */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  .dark {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+}
+
 @theme inline {
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-critical-bg: var(--sev-critical-bg);
+  --color-sev-high: var(--sev-high);
+  --color-sev-high-bg: var(--sev-high-bg);
+  --color-sev-medium: var(--sev-medium);
+  --color-sev-medium-bg: var(--sev-medium-bg);
+  --color-sev-low: var(--sev-low);
+  --color-sev-low-bg: var(--sev-low-bg);
+  --color-sev-pass: var(--sev-pass);
+  --color-sev-pass-bg: var(--sev-pass-bg);
+  --color-band-strong: var(--band-strong);
+  --color-band-moderate: var(--band-moderate);
+  --color-band-weak: var(--band-weak);
+  --color-band-critical: var(--band-critical);
   --font-sans: 'Inter', 'Geist', 'Geist Fallback', system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
   --color-background: var(--background);
@@ -152,7 +211,18 @@
   .glass-card {
     @apply bg-glass backdrop-blur-xl border border-glass-border rounded-2xl;
   }
-  
+
+  /* Dense data surfaces use a solid card: blur behind tables and graphs costs
+     legibility and GPU for no informational gain. Glass stays for chrome. */
+  .data-card {
+    @apply bg-card border border-border rounded-2xl;
+  }
+
+  /* Columns of numbers must line up. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
   .logo-img {
     @apply drop-shadow-none dark:brightness-95;
   }

@@ -55,6 +55,9 @@ spec:
               cpu: 250m
 
           securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:

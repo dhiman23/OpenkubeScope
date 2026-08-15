@@ -25,6 +25,43 @@ const FREQ: Record<number, string> = {
   [report.ScheduleFrequency.MONTHLY]: "monthly",
 }
 
+const SELECTION_MODE: Record<number, string> = {
+  [report.SelectionMode.EXPLICIT]: "explicit",
+  [report.SelectionMode.LATEST_PER_CLUSTER]: "latest_per_cluster",
+}
+
+/**
+ * Provenance passthrough.
+ *
+ * The frontend needs to state, on the report card and in the report detail,
+ * exactly which snapshot a report describes and whether that snapshot is still
+ * the newest — otherwise an old report is indistinguishable from one built
+ * from the scan the user currently has open. Reports generated before
+ * provenance tracking have none, and are surfaced as null rather than guessed.
+ */
+function provenanceToJson(p: report.ReportProvenance | undefined) {
+  if (!p) return null
+  return {
+    sources: (p.sources ?? []).map((s) => ({
+      scan_id: s.scanId,
+      cluster_name: s.clusterName,
+      file_name: s.fileName,
+      snapshot_taken_at: s.snapshotTakenAt,
+      is_latest: s.isLatest,
+      totals: s.totals ?? { subjects: 0, roles: 0, bindings: 0 },
+      risk_counts: s.riskCounts ?? { critical: 0, high: 0, medium: 0, low: 0 },
+      namespace_count: s.namespaceCount,
+      cluster_scoped_bindings: s.clusterScopedBindings,
+      bound_subjects: s.boundSubjects,
+    })),
+    generated_at: p.generatedAt,
+    scope: p.scope,
+    filters: p.filters ?? [],
+    based_on_latest: p.basedOnLatest,
+    selection_mode: SELECTION_MODE[p.selectionMode] || "latest_per_cluster",
+  }
+}
+
 export function reportToJson(r: report.Report) {
   return {
     id: r.id,
@@ -40,6 +77,7 @@ export function reportToJson(r: report.Report) {
     file_url: null,
     file_size: r.fileSize || null,
     error_message: r.errorMessage || null,
+    provenance: provenanceToJson(r.provenance),
     created_at: r.createdAt,
     updated_at: r.updatedAt,
   }

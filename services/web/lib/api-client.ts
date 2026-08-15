@@ -206,7 +206,19 @@ export const subscriptionApi = {
 
 export const reportsApi = {
   list: (workspaceId: string) => apiFetch<{ reports: unknown[] }>(`/workspaces/${workspaceId}/reports`).then((r) => r.reports),
-  generate: (workspaceId: string, body: { reportName: string; reportType: string; format: string; clusters: string[]; scanIds?: string[] }) =>
+  generate: (
+    workspaceId: string,
+    body: {
+      reportName: string
+      reportType: string
+      format: string
+      clusters: string[]
+      // Naming the snapshots binds the report to the scan the user has open;
+      // omitting them makes report-service fall back to latest-per-cluster.
+      scanIds?: string[]
+      filters?: string[]
+    },
+  ) =>
     apiFetch<{ reportId: string; status: string; fileSize: string }>(`/workspaces/${workspaceId}/reports`, { method: "POST", body }),
   remove: (workspaceId: string, reportId: string) =>
     apiFetch<{ deleted: boolean }>(`/workspaces/${workspaceId}/reports/${reportId}`, { method: "DELETE" }),

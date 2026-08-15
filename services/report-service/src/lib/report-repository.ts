@@ -4,6 +4,7 @@
 
 import { getPool } from "./db"
 import type { ReportData } from "./report-engine"
+import type { ReportProvenance } from "./provenance"
 import type { ReportType, ReportFormat, ReportStatusStr, ScanRiskCounts } from "./rbac-types"
 
 export interface ReportRow {
@@ -20,6 +21,8 @@ export interface ReportRow {
   file_content: string | null // base64
   file_size: string | null
   error_message: string | null
+  /** NULL for reports generated before provenance tracking existed. */
+  provenance: ReportProvenance | null
   created_at: string
   updated_at: string
 }
@@ -49,14 +52,31 @@ export async function createReport(params: {
 
 export async function completeReport(
   reportId: string,
-  updates: { riskSummary: ScanRiskCounts; reportData: ReportData; fileContent: string; fileSize: string },
+  updates: {
+    riskSummary: ScanRiskCounts
+    reportData: ReportData
+    fileContent: string
+    fileSize: string
+    /** Snapshots actually read — written back so the row is never ambiguous. */
+    scanIds: string[]
+    provenance: ReportProvenance
+  },
 ): Promise<void> {
   const pool = getPool()
   await pool.query(
     `UPDATE report.reports
-        SET status = 'completed', risk_summary = $2, report_data = $3, file_content = $4, file_size = $5, error_message = NULL
+        SET status = 'completed', risk_summary = $2, report_data = $3, file_content = $4, file_size = $5,
+            scan_ids = $6, provenance = $7, error_message = NULL
       WHERE id = $1`,
-    [reportId, JSON.stringify(updates.riskSummary), JSON.stringify(updates.reportData), updates.fileContent, updates.fileSize],
+    [
+      reportId,
+      JSON.stringify(updates.riskSummary),
+      JSON.stringify(updates.reportData),
+      updates.fileContent,
+      updates.fileSize,
+      updates.scanIds,
+      JSON.stringify(updates.provenance),
+    ],
   )
 }
 
@@ -69,8 +89,11 @@ export async function listReports(workspaceId: string): Promise<ReportRow[]> {
   const pool = getPool()
   // Exclude the heavy report_data / file_content columns from list views.
   const { rows } = await pool.query<ReportRow>(
+    // provenance IS included: it is small, and the reports list has to show
+    // which snapshot each report describes without pulling report_data.
     `SELECT id, workspace_id, scan_ids, report_name, report_type, format, clusters, status,
-            risk_summary, NULL::jsonb AS report_data, NULL AS file_content, file_size, error_message, created_at, updated_at
+            risk_summary, NULL::jsonb AS report_data, NULL AS file_content, file_size, error_message,
+            provenance, created_at, updated_at
        FROM report.reports
       WHERE workspace_id = $1
       ORDER BY created_at DESC`,
