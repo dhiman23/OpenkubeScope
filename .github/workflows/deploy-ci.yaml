@@ -101,5 +101,5 @@ jobs:
           done
           cosign sign --yes ${images}
           cosign verify ${images} \
-          --certificate-identity=https://github.com/Dhiman23/OpenKubeScope/.github/workflows/deploy-ci.yaml@refs/heads/dev \
+          --certificate-identity=https://github.com/dhiman23/OpenKubeScope/.github/workflows/deploy-ci.yaml@refs/heads/dev \
           --certificate-oidc-issuer=https://token.actions.githubusercontent.com
