@@ -97,9 +97,11 @@ jobs:
 
           images="${IMAGE}"
           for tag in ${TAGS}; do
-            images+="${tag}@${DIGEST} "
+          REF="${tag}@${DIGEST}"
+
+          cosign sign --yes "${REF}"
+
+          cosign verify "${REF}" \
+          --certificate-identity="https://github.com/dhiman23/OpenKubeScope/.github/workflows/deploy-ci.yaml@refs/heads/dev" \
+          --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
           done
-          cosign sign --yes ${images}
-          cosign verify ${images} \
-          --certificate-identity=https://github.com/dhiman23/OpenKubeScope/.github/workflows/deploy-ci.yaml@refs/heads/dev \
-          --certificate-oidc-issuer=https://token.actions.githubusercontent.com
