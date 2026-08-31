@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: monitoring
+  labels:
+    app: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+      - name: kibana
+        image: docker.elastic.co/kibana/kibana:9.5.2
+        resources:
+          limits:
+            cpu: 500m
+          requests:
+            cpu: 100m
+        env:
+          - name: ELASTICSEARCH_HOSTS
+            value: http://elasticsearch:9200
+          - name: xpack.security.enabled
+            value: "false"
+          - name: XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY
+            value: "01234567890123456789012345678901"
+          - name: XPACK_SECURITY_ENCRYPTIONKEY
+            value: "abcdefghijklmnopqrstuvwxyz123456"
+          - name: XPACK_REPORTING_ENCRYPTIONKEY
+            value: "abcdefghijklmnopqrstuvwxyz654321"
+        ports:
+        - containerPort: 5601
+
+---
+
+#svc
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: monitoring
+spec:
+  selector: 
+    app: kibana
+  type: NodePort  
+  ports:
+    - port: 5601
+      targetPort: 5601 
+      nodePort: 30000
+
