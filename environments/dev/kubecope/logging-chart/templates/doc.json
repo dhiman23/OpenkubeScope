@@ -1,0 +1,5 @@
+{
+  "@timestamp": "2026-09-01T22:12:05.694200138+00:00",
+  "stream": "stderr",
+  "log": "I0901 22:12:05.693844       1 main.go:324] handling current node"
+}

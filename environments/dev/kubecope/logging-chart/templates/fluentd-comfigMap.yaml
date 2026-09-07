@@ -5,9 +5,20 @@ metadata:
   namespace: monitoring
 data:
   fluent.conf: |
-    <match **>
-      @type elasticsearch
-      host elasticsearch
-      port 9200
-      logstash_format true
+   <system>
+    log_level trace
+   </system>
+   <match **>
+    @type elasticsearch
+    host elasticsearch
+    port 9200
+
+    logstash_format true
+
+    include_tag_key true
+    reconnect_on_error true
+    reload_connections false
+    request_timeout 30s
+
+    suppress_type_name true
     </match>

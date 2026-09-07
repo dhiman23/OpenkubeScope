@@ -33,6 +33,9 @@ spec:
             value: /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
           - name: FLUENT_CONTAINER_TAIL_EXCLUDE_PATH
             value: /var/log/containers/fluent*
+
+          - name: FLUENT_ELASTICSEARCH_LOG_ES_400_REASON
+            value: "true"
         resources:
           limits:
             memory: 500Mi
