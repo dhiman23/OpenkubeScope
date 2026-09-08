@@ -7,7 +7,7 @@ metadata:
   namespace: openkubescope
   
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels: 
       app: scanner
@@ -39,10 +39,10 @@ spec:
         - containerPort: 50051
         resources: 
           requests:
-            memory: 250Mi
+            memory: 150Mi
             cpu: 200m
           limits:
-            memory: 350Mi
+            memory: 250Mi
             cpu: 250m
         env:
 
