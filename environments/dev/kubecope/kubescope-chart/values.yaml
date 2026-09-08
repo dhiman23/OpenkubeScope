@@ -8,17 +8,17 @@ scanner:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-rbac-scanner-service
-    tag: 344f0d3b3da618910ed97b1de66eb06d153c108d
+    tag: 395c10b97c7f4724bfa9f43dac5d3e6f8a7ad167
 report:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-report-service
-    tag: 344f0d3b3da618910ed97b1de66eb06d153c108d
+    tag: 395c10b97c7f4724bfa9f43dac5d3e6f8a7ad167
 web:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-web
-    tag: 344f0d3b3da618910ed97b1de66eb06d153c108d
+    tag: 395c10b97c7f4724bfa9f43dac5d3e6f8a7ad167
 postgres:
   image: postgres:17-alpine
 service:
