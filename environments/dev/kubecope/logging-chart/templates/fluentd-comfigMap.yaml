@@ -19,6 +19,12 @@ data:
     reconnect_on_error true
     reload_connections false
     request_timeout 30s
+    
+    @type parser
+    key_name log
+    reserve_data true
+    emit_invalid_record_to_error false
+    <parse>
 
     suppress_type_name true
     </match>
