@@ -12,6 +12,7 @@ import { createPendingScan, deleteScan, getScan, listLatestScansByCluster, listS
 import { scanToProto } from "./lib/proto-mapper"
 import { startSqsConsumer, stopSqsConsumer } from "./lib/sqs-consumer"
 import { runMigrations } from "./lib/migrate"
+import { log } from "./lib/logger"
 import { getPool } from "./lib/db"
 
 const SERVICE_NAME = "kubescope.scanner.v1.RbacScannerService"
@@ -127,7 +128,7 @@ async function main() {
   try {
     await runMigrations(getPool())
   } catch (err) {
-    console.error("Database migration failed, refusing to start:", err)
+    log.error("Database migration failed, refusing to start", { error: err instanceof Error ? err.message : String(err) })
     process.exit(1)
   }
 
@@ -141,15 +142,15 @@ async function main() {
 
   server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), (err, boundPort) => {
     if (err) {
-      console.error("Failed to bind rbac-scanner-service:", err)
+      log.error("Failed to bind rbac-scanner-service", { error: err.message })
       process.exit(1)
     }
-    console.log(`rbac-scanner-service listening on :${boundPort}`)
+    log.info("rbac-scanner-service listening", { port: boundPort })
     startSqsConsumer()
   })
 
   const shutdown = () => {
-    console.log("rbac-scanner-service shutting down")
+    log.info("rbac-scanner-service shutting down")
     health.setStatus(SERVICE_NAME, "NOT_SERVING")
     server.tryShutdown(async () => {
       // Waits for the in-flight scan job (if any) to finish — the pod's

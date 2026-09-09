@@ -8,6 +8,8 @@ import { fetchScansForClusters, fetchScansByIds, fetchLatestScanMetaForClusters 
 import { buildProvenance, type SelectionMode } from "./provenance"
 import { createReport, completeReport, failReport, getReport, type ReportRow } from "./report-repository"
 import type { ReportType, ReportFormat, ScanRow } from "./rbac-types"
+import { SpanStatusCode, trace } from "@opentelemetry/api"
+import { withSpan, withSyncSpan } from "./tracing"
 
 export interface GenerateResult {
   reportId: string
@@ -18,7 +20,7 @@ export interface GenerateResult {
   riskSummary: { critical: number; high: number; medium: number; low: number }
 }
 
-export async function generateReport(params: {
+export interface GenerateParams {
   reportId?: string
   workspaceId: string
   workspaceName: string
@@ -28,7 +30,41 @@ export async function generateReport(params: {
   reportName: string
   scanIds?: string[]
   filters?: string[]
-}): Promise<GenerateResult> {
+}
+
+// Traced entry point. Auto-instrumentation shows the gRPC call coming in and
+// the Postgres writes going out, but not the fetch/build/render work between
+// them — which is where a slow report actually spends its time. The attributes
+// describe the shape of the report so a trace can be read on its own.
+//
+// generateReport() returns a failed GenerateResult instead of throwing, so the
+// span status is set from the result rather than from a caught exception.
+export async function generateReport(params: GenerateParams): Promise<GenerateResult> {
+  return withSpan(
+    "report.generate",
+    {
+      "workspace.id": params.workspaceId,
+      "report.type": params.reportType,
+      "report.format": params.format,
+      "report.clusters": params.clusters.length,
+      "report.explicit_scan_ids": (params.scanIds ?? []).length,
+    },
+    async (span) => {
+      const result = await generateReportInner(params)
+      span.setAttributes({
+        "report.id": result.reportId,
+        "report.status": result.status,
+        "report.file_bytes": result.fileContent?.length ?? 0,
+      })
+      if (result.status === "failed") {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: result.errorMessage })
+      }
+      return result
+    },
+  )
+}
+
+async function generateReportInner(params: GenerateParams): Promise<GenerateResult> {
   // 1. Persist (or reuse) the report row in 'generating' state.
   let row: ReportRow
   if (params.reportId) {
@@ -81,6 +117,11 @@ export async function generateReport(params: {
       selectionMode = "LATEST_PER_CLUSTER"
     }
 
+    trace.getActiveSpan()?.setAttributes({
+      "report.scans": scans.length,
+      "report.selection_mode": selectionMode,
+    })
+
     if (scans.length === 0) {
       await failReport(row.id, "No scans found for the selected clusters")
       return emptyFail(row.id, "No scans found for the selected clusters")
@@ -111,7 +152,14 @@ export async function generateReport(params: {
       scans,
       provenance,
     })
-    const { content, size } = renderReportFile(reportData)
+    // The PDF path (jspdf + autotable) is the expensive one and scales with
+    // findings count, so it gets its own span rather than hiding inside the
+    // parent's duration.
+    const { content, size } = withSyncSpan(
+      "report.render_file",
+      { "report.format": params.format, "report.findings": reportData.findings.length },
+      () => renderReportFile(reportData),
+    )
     const fileBase64 = content.toString("base64")
 
     // 5. Persist the completed report, including the snapshot ids it actually

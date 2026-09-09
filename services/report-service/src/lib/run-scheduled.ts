@@ -3,6 +3,7 @@
 // app/api/cron/scheduled-reports route, but owns scheduling end-to-end here.
 
 import { generateReport } from "./generate"
+import { log } from "./logger"
 import { claimDueScheduledReports, computeNextRun, recordScheduledRun } from "./scheduled-repository"
 import { sendSlackReportNotification, isAllowedSlackWebhook } from "./notifications"
 
@@ -46,7 +47,7 @@ export async function runDueScheduledReports(limit: number): Promise<{ processed
             workspaceName: sched.workspace_name,
           })
         } catch (err) {
-          console.error(`Slack notify failed for schedule ${sched.id}:`, err instanceof Error ? err.message : err)
+          log.error("Slack notify failed", { schedule_id: sched.id, error: err instanceof Error ? err.message : String(err) })
         }
       }
     } catch (err) {
