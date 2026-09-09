@@ -1,8 +1,16 @@
 // RBAC scanning engine — ported from lib/rbac-scanner.ts in the monolith.
 // Pure parsing + findings logic, no browser APIs (File/localStorage) and no
 // Supabase calls — those live in scan-repository.ts and server.ts.
+//
+// The only non-pure thing here is tracing: this is where a scan spends its
+// time (unzip, parse, 12-rule engine) and none of it does I/O, so without
+// spans it is a flat unexplained gap between the SQS span and the DB write.
+// The helpers are no-ops when no collector is configured.
 
 import JSZip from "jszip"
+import { trace } from "@opentelemetry/api"
+import { log } from "./logger"
+import { withSpan, withSyncSpan } from "./tracing"
 
 // ============================================
 // TYPES
@@ -234,6 +242,18 @@ function buildImpactedSubjectsIndex(bindings: RBACBinding[]): Map<string, string
 // ============================================
 
 export function generateFindings(roles: RBACRole[], bindings: RBACBinding[]): RBACFinding[] {
+  return withSyncSpan(
+    "rbac.generate_findings",
+    { "rbac.roles": roles.length, "rbac.bindings": bindings.length },
+    (span) => {
+      const findings = buildFindings(roles, bindings)
+      span.setAttribute("rbac.findings", findings.length)
+      return findings
+    },
+  )
+}
+
+function buildFindings(roles: RBACRole[], bindings: RBACBinding[]): RBACFinding[] {
   const findings: RBACFinding[] = []
   const findingIds = new Set<string>()
   const now = new Date().toISOString()
@@ -800,7 +820,10 @@ export async function parseSnapshotZip(buffer: Buffer): Promise<ScanDataset> {
         combinedBindings.push(...data.bindings)
         combinedSubjects.push(...data.subjects)
       } catch (e) {
-        console.error(`Failed to parse ${fileName}:`, e)
+        log.error("Failed to parse file inside snapshot zip", {
+          file: fileName,
+          error: e instanceof Error ? e.message : String(e),
+        })
       }
     }
   }
@@ -864,7 +887,21 @@ export async function createScanFromBuffer(fileBuffer: Buffer, fileName: string)
   const isZip = fileName.endsWith(".zip")
   const stableId = generateStableId(isZip ? fileBuffer.toString("base64").slice(0, 4096) : fileBuffer.toString("utf-8"))
 
-  const dataset = isZip ? await parseSnapshotZip(fileBuffer) : parseSnapshotJSON(fileBuffer.toString("utf-8"))
+  // Snapshots run to tens of MB, so parse time is worth separating from the
+  // findings engine: a slow scan is one or the other, never both equally.
+  const dataset = await withSpan(
+    "rbac.parse_snapshot",
+    { "scan.file_name": fileName, "scan.snapshot_bytes": fileBuffer.byteLength, "scan.is_zip": isZip },
+    async (span) => {
+      const parsed = isZip ? await parseSnapshotZip(fileBuffer) : parseSnapshotJSON(fileBuffer.toString("utf-8"))
+      span.setAttributes({
+        "rbac.subjects": parsed.subjects.length,
+        "rbac.roles": parsed.roles.length,
+        "rbac.bindings": parsed.bindings.length,
+      })
+      return parsed
+    },
+  )
 
   const isLargeScan = fileBuffer.byteLength > LARGE_SCAN_THRESHOLD_SIZE
   const { dataset: finalDataset, isSummaryMode } = isLargeScan ? applySummaryMode(dataset) : { dataset, isSummaryMode: false }
@@ -881,6 +918,19 @@ export async function createScanFromBuffer(fileBuffer: Buffer, fileName: string)
     medium: dataset.findings.filter((f) => f.severity === "medium").length,
     low: dataset.findings.filter((f) => f.severity === "low").length,
   }
+
+  // Attributes on the enclosing span (the SQS consumer's, or the gRPC server
+  // span on the sync path) so a trace answers "what did this scan find?"
+  // without opening the database.
+  const active = trace.getActiveSpan()
+  active?.setAttributes({
+    "scan.id": stableId,
+    "scan.summary_mode": isSummaryMode,
+    "rbac.findings.critical": riskCounts.critical,
+    "rbac.findings.high": riskCounts.high,
+    "rbac.findings.medium": riskCounts.medium,
+    "rbac.findings.low": riskCounts.low,
+  })
 
   return {
     id: stableId,

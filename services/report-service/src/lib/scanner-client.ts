@@ -8,6 +8,9 @@
 
 import * as grpc from "@grpc/grpc-js"
 import Redis from "ioredis"
+import { log } from "./logger"
+import { type Span } from "@opentelemetry/api"
+import { withSpan } from "./tracing"
 
 import { RbacScannerServiceClient } from "../generated/scanner"
 import * as scannerProto from "../generated/scanner"
@@ -35,7 +38,7 @@ function getRedis(): Redis | null {
   redis = new Redis(url, { lazyConnect: false, maxRetriesPerRequest: 2 })
   redis.on("error", (err) => {
     // Don't crash report generation if Redis is down — degrade to no-cache.
-    console.error("Redis error (caching disabled for this call):", err.message)
+    log.error("Redis error (caching disabled for this call)", { error: err.message })
   })
   return redis
 }
@@ -170,19 +173,35 @@ export async function fetchLatestScanMetaForClusters(workspaceId: string, cluste
   })
 }
 
+// Wrapped in a span because cache.hit is the single most useful thing to know
+// about a slow report: a miss means a gRPC round trip per snapshot, and the
+// ioredis/grpc spans underneath show which one cost the time.
 async function fetchScanById(workspaceId: string, scanId: string): Promise<ScanRow | null> {
+  return withSpan("scan.fetch", { "workspace.id": workspaceId, "scan.id": scanId }, async (span) => {
+    const scan = await fetchScanByIdUncached(workspaceId, scanId, span)
+    span.setAttribute("scan.found", scan !== null)
+    return scan
+  })
+}
+
+async function fetchScanByIdUncached(workspaceId: string, scanId: string, span: Span): Promise<ScanRow | null> {
   const cacheKey = `scan:${workspaceId}:${scanId}`
   const cache = getRedis()
+  span.setAttribute("cache.enabled", cache !== null)
 
   // A completed scan row never changes, so caching it by id is safe — unlike
   // caching "the latest scan for this cluster", which was the previous key.
   if (cache) {
     try {
       const hit = await cache.get(cacheKey)
-      if (hit) return JSON.parse(hit) as ScanRow
+      if (hit) {
+        span.setAttribute("cache.hit", true)
+        return JSON.parse(hit) as ScanRow
+      }
     } catch {
       // ignore cache read failure, fall through to gRPC
     }
+    span.setAttribute("cache.hit", false)
   }
 
   const client = getScannerClient()
