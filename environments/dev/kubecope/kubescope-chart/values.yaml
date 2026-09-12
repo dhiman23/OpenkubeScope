@@ -3,7 +3,7 @@ coreApi:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-core-api
-    tag: 9dd58e46080e394be1ca1344104be517e43d3469
+    tag: fb344c1675e5bc618cc9134dc61bc98c255cc53b
 scanner:
   replicaCount: 2
   image:
@@ -18,7 +18,7 @@ web:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-web
-    tag: 9dd58e46080e394be1ca1344104be517e43d3469
+    tag: fb344c1675e5bc618cc9134dc61bc98c255cc53b
 tracing:
   # OTLP/HTTP base URL of the trace collector — Jaeger's 4318 port, with NO
   # path: the services append /v1/traces themselves. Set to "" to disable
