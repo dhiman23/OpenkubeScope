@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs"
 import { getPool } from "../db"
+import { log } from "../lib/logger"
 
 export interface UserRow {
   id: string
@@ -28,7 +29,10 @@ export async function ensureBootstrapAdmin(): Promise<void> {
      ON CONFLICT DO NOTHING`,
     [BOOTSTRAP_ADMIN_USERNAME, hash],
   )
-  console.log(`Seeded bootstrap admin (username "${BOOTSTRAP_ADMIN_USERNAME}", password "${BOOTSTRAP_ADMIN_PASSWORD}") — change on first login`)
+  log.info("Seeded bootstrap admin — change credentials on first login", {
+    username: BOOTSTRAP_ADMIN_USERNAME,
+    password: BOOTSTRAP_ADMIN_PASSWORD,
+  })
 }
 
 // Email/password signup (self-service accounts). Username defaults to null;

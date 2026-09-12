@@ -86,6 +86,17 @@ spec:
           - name: SCANNER_SERVICE_ADDR
             value: scanner-svc:50051
 
+          # Tracing. An empty tracing.otlpEndpoint leaves this empty, and the
+          # service then skips OTel setup entirely — see src/telemetry.ts.
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "{{ .Values.tracing.otlpEndpoint }}"
+
+          - name: OTEL_SERVICE_NAME
+            value: report-service
+
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: "deployment.environment={{ .Values.tracing.environment }},service.version={{ .Values.report.image.tag }}"
+
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001

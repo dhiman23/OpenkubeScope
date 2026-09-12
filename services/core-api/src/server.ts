@@ -15,6 +15,7 @@ import { cronRouter } from "./routes/cron"
 import { closeClients } from "./lib/grpc-clients"
 import { closePool, getPool } from "./db"
 import { runMigrations } from "./lib/migrate"
+import { log } from "./lib/logger"
 import { ensureBootstrapAdmin } from "./repositories/users"
 
 const app = express()
@@ -44,7 +45,7 @@ app.use("/api/cron", cronRouter)
 // Fallback error handler. Must be registered last and keep all four params —
 // Express identifies error middleware by arity, not by position alone.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("Unhandled error:", err)
+  log.error("Unhandled request error", { error: err instanceof Error ? err.message : String(err) })
   res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error" })
 })
 
@@ -58,7 +59,7 @@ async function start() {
   try {
     await runMigrations(getPool())
   } catch (err) {
-    console.error("Database migration failed, refusing to start:", err)
+    log.error("Database migration failed, refusing to start", { error: err instanceof Error ? err.message : String(err) })
     process.exit(1)
   }
 
@@ -70,11 +71,11 @@ async function start() {
   try {
     await ensureBootstrapAdmin()
   } catch (err) {
-    console.error("Bootstrap admin seed failed:", err)
+    log.error("Bootstrap admin seed failed", { error: err instanceof Error ? err.message : String(err) })
   }
 
   server = app.listen(port, () => {
-    console.log(`core-api listening on :${port}`)
+    log.info("core-api listening", { port })
   })
 }
 
@@ -82,7 +83,7 @@ let server: ReturnType<typeof app.listen>
 start()
 
 async function shutdown() {
-  console.log("core-api shutting down")
+  log.info("core-api shutting down")
   // server may not exist yet if SIGTERM arrives while migrations/bootstrap
   // are still running (e.g. a rolling restart hitting a slow migration).
   const finish = async () => {

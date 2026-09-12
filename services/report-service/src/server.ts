@@ -21,6 +21,7 @@ import { reportTypeFromProto, reportTypeToProto, reportFormatFromProto, reportFo
 import { closeClients } from "./lib/scanner-client"
 import { closePool, getPool } from "./lib/db"
 import { runMigrations } from "./lib/migrate"
+import { log } from "./lib/logger"
 
 const SERVICE_NAME = "kubescope.report.v1.ReportService"
 
@@ -211,7 +212,7 @@ async function main() {
   try {
     await runMigrations(getPool())
   } catch (err) {
-    console.error("Database migration failed, refusing to start:", err)
+    log.error("Database migration failed, refusing to start", { error: err instanceof Error ? err.message : String(err) })
     process.exit(1)
   }
 
@@ -225,14 +226,14 @@ async function main() {
 
   server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), (err, boundPort) => {
     if (err) {
-      console.error("Failed to bind report-service:", err)
+      log.error("Failed to bind report-service", { error: err.message })
       process.exit(1)
     }
-    console.log(`report-service listening on :${boundPort}`)
+    log.info("report-service listening", { port: boundPort })
   })
 
   const shutdown = () => {
-    console.log("report-service shutting down")
+    log.info("report-service shutting down")
     health.setStatus(SERVICE_NAME, "NOT_SERVING")
     server.tryShutdown(async () => {
       await closeClients()

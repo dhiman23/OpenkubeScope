@@ -8,13 +8,37 @@
 // a report-generation queue by defining another *_SQS_QUEUE_URL env var and a
 // wrapper below — no refactoring of the send path.
 
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs"
+import { SQSClient, SendMessageCommand, type MessageAttributeValue } from "@aws-sdk/client-sqs"
+import { context, propagation } from "@opentelemetry/api"
 
 let client: SQSClient | null = null
 
+// A queue is a hole in a distributed trace: the consumer runs in another pod,
+// minutes later, with no HTTP or gRPC call to carry context. W3C trace context
+// travels as message attributes instead, so rbac-scanner-service can attach its
+// work to the request that caused it (see extractTraceContext() in that
+// service's lib/sqs-consumer.ts). Two attributes, well under the SQS limit of
+// 10; the aws-sdk instrumentation may inject the same keys, which is harmless.
+function traceContextAttributes(): Record<string, MessageAttributeValue> {
+  const carrier: Record<string, string> = {}
+  propagation.inject(context.active(), carrier)
+
+  const attributes: Record<string, MessageAttributeValue> = {}
+  for (const [key, value] of Object.entries(carrier)) {
+    attributes[key] = { DataType: "String", StringValue: value }
+  }
+  return attributes
+}
+
 async function sendQueueMessage(queueUrl: string, payload: Record<string, unknown>): Promise<void> {
   if (!client) client = new SQSClient({})
-  await client.send(new SendMessageCommand({ QueueUrl: queueUrl, MessageBody: JSON.stringify(payload) }))
+  await client.send(
+    new SendMessageCommand({
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify(payload),
+      MessageAttributes: traceContextAttributes(),
+    }),
+  )
 }
 
 // ---- RBAC scan queue ----

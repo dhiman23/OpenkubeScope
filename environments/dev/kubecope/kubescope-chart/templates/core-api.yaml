@@ -93,6 +93,17 @@ spec:
           - name: REPORT_SERVICE_ADDR
             value: report-svc:50052
 
+          # Tracing. An empty tracing.otlpEndpoint leaves this empty, and the
+          # service then skips OTel setup entirely — see src/telemetry.ts.
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "{{ .Values.tracing.otlpEndpoint }}"
+
+          - name: OTEL_SERVICE_NAME
+            value: core-api
+
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: "deployment.environment={{ .Values.tracing.environment }},service.version={{ .Values.coreApi.image.tag }}"
+
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

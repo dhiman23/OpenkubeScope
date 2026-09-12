@@ -16,6 +16,7 @@
 import fs from "fs"
 import path from "path"
 import type { Pool } from "pg"
+import { log } from "./logger"
 
 // Distinct from core-api's and report-service's lock keys so the three
 // services don't needlessly block each other's startup on the shared
@@ -48,7 +49,7 @@ export async function runMigrations(pool: Pool): Promise<void> {
         await client.query("BEGIN")
         await client.query(sql)
         await client.query("COMMIT")
-        console.log(`[migrate] applied ${file}`)
+        log.info("Migration applied", { file })
       } catch (err) {
         await client.query("ROLLBACK").catch(() => {})
         throw new Error(`Migration ${file} failed: ${err instanceof Error ? err.message : err}`)
