@@ -19,6 +19,13 @@ web:
   image:
     repository: sajaldhiman1999/kubescope-web
     tag: 9dd58e46080e394be1ca1344104be517e43d3469
+tracing:
+  # OTLP/HTTP base URL of the trace collector — Jaeger's 4318 port, with NO
+  # path: the services append /v1/traces themselves. Set to "" to disable
+  # tracing everywhere (the services then skip OTel setup entirely).
+  otlpEndpoint: "http://jaeger.monitoring.svc.cluster.local:4318"
+  environment: dev
+
 postgres:
   image: postgres:17-alpine
 service:
