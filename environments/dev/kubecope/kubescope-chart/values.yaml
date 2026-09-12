@@ -8,12 +8,12 @@ scanner:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-rbac-scanner-service
-    tag: 9dd58e46080e394be1ca1344104be517e43d3469
+    tag: fb344c1675e5bc618cc9134dc61bc98c255cc53b
 report:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-report-service
-    tag: 9dd58e46080e394be1ca1344104be517e43d3469
+    tag: fb344c1675e5bc618cc9134dc61bc98c255cc53b
 web:
   replicaCount: 2
   image:
@@ -25,7 +25,6 @@ tracing:
   # tracing everywhere (the services then skip OTel setup entirely).
   otlpEndpoint: "http://jaeger.monitoring.svc.cluster.local:4318"
   environment: dev
-
 postgres:
   image: postgres:17-alpine
 service:
