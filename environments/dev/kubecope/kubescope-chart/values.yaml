@@ -18,7 +18,7 @@ web:
   replicaCount: 2
   image:
     repository: sajaldhiman1999/kubescope-web
-    tag: cf4596b85515cc486670146b5b202e6a8bccaf8d
+    tag: 18b462ea9f84f3276d9fde7a2fd93aa9b98606da
 postgres:
   image: postgres:17-alpine
 service:
