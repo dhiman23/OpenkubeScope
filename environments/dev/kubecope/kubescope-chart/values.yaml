@@ -25,7 +25,7 @@ tracing:
   # tracing everywhere (the services then skip OTel setup entirely).
   otlpEndpoint: "http://jaeger.default.svc.cluster.local:4318"
   environment: dev
-
+#ded
 postgres:
   image: postgres:17-alpine
 service:
